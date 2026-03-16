@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PufferFish } from '../objects/PufferFish';
 import { Obstacle } from '../objects/Obstacle';
+import { ParallaxBackground } from '../objects/ParallaxBackground';
 import {
     GAME_WIDTH,
     GAME_HEIGHT,
@@ -9,7 +10,10 @@ import {
     OBSTACLE_SPEED_INITIAL,
     OBSTACLE_SPEED_MAX,
     SPAWN_INTERVAL_INITIAL,
-    DIFFICULTY_RAMP_SCORE,
+    SPAWN_INTERVAL_MIN,
+    DIFFICULTY_RAMP_GAP,
+    DIFFICULTY_RAMP_SPEED,
+    DIFFICULTY_RAMP_SPAWN,
     FISH_MAX_INFLATE,
 } from '../constants';
 
@@ -25,21 +29,29 @@ import {
  *  - Trigger the GameOverScene when the player dies
  */
 export class GameScene extends Phaser.Scene {
+    private parallax!: ParallaxBackground;
     private fish!: PufferFish;
     private obstacles!: Obstacle[];
     private score: number = 0;
     private isGameOver: boolean = false;
 
-    // UI elements
-    private scoreText!: Phaser.GameObjects.Text;
-    private meterBg!: Phaser.GameObjects.Rectangle;
-    private meterFill!: Phaser.GameObjects.Rectangle;
+    // UI – score display: 4 outline copies + 1 main text on top
+    private scoreOutlines!: Phaser.GameObjects.Text[];
+    private scoreMain!: Phaser.GameObjects.Text;
+
+    // UI – best score (top right, double-drawn)
+    private bestShadow!: Phaser.GameObjects.Text;
+    private bestMain!: Phaser.GameObjects.Text;
+    private bestScore: number = 0;
+
+    // UI – inflate meter (Graphics, redrawn every frame)
+    private meterGfx!: Phaser.GameObjects.Graphics;
 
     // Input
     private spaceKey!: Phaser.Input.Keyboard.Key;
 
-    // Timer
-    private spawnTimer!: Phaser.Time.TimerEvent;
+    // Timer – holds the pending delayedCall so it can be cancelled on game over
+    private spawnTimer: Phaser.Time.TimerEvent | null = null;
 
     constructor() {
         super({ key: 'GameScene' });
@@ -50,46 +62,63 @@ export class GameScene extends Phaser.Scene {
         this.isGameOver = false;
         this.obstacles = [];
 
-        // Background
-        this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'background');
+        // Static cartoon ocean base – sits below all parallax layers (depth −10)
+        this.add.image(0, 0, 'background').setOrigin(0, 0).setDepth(-10);
+
+        // Parallax layers scroll on top of the static base
+        this.parallax = new ParallaxBackground(this);
 
         // Player fish
         this.fish = new PufferFish(this, 120, GAME_HEIGHT / 2);
 
-        // Score display
-        this.scoreText = this.add.text(GAME_WIDTH / 2, 30, '0', {
-            fontFamily: '"Courier New", Courier, monospace',
-            fontSize: '36px',
-            fontStyle: 'bold',
+        // ── Score display (4-corner black outline + white text on top) ────
+        const scoreX = GAME_WIDTH / 2;
+        const scoreY = 20;
+        const pixelFont = '"Press Start 2P"';
+
+        const outlineOffsets: [number, number][] = [[-3, -3], [3, -3], [-3, 3], [3, 3]];
+        this.scoreOutlines = outlineOffsets.map(([dx, dy]) =>
+            this.add.text(scoreX + dx, scoreY + dy, '0', {
+                fontFamily: pixelFont,
+                fontSize: '32px',
+                color: '#000000',
+            }).setOrigin(0.5, 0).setDepth(20),
+        );
+
+        this.scoreMain = this.add.text(scoreX, scoreY, '0', {
+            fontFamily: pixelFont,
+            fontSize: '32px',
             color: '#ffffff',
-            stroke: '#0a1a3a',
-            strokeThickness: 5,
-        });
-        this.scoreText.setOrigin(0.5, 0);
-        this.scoreText.setDepth(10);
+        }).setOrigin(0.5, 0).setDepth(21);
 
-        // ── Inflate meter UI ──────────────────────────────────────────────
-        const meterX = 10;
-        const meterY = GAME_HEIGHT - 24;
-        const meterMaxW = 120;
-        const meterH = 14;
+        // ── Best score (top right, double-drawn) ──────────────────────────
+        this.bestScore = (this.registry.get('highScore') as number | undefined) ?? 0;
+        const bestX = GAME_WIDTH - 10;
+        const bestStr = `BEST:${this.bestScore}`;
 
-        // Background track
-        this.meterBg = this.add.rectangle(meterX, meterY, meterMaxW, meterH, 0x223344);
-        this.meterBg.setOrigin(0, 0);
-        this.meterBg.setDepth(10);
+        this.bestShadow = this.add.text(bestX + 2, scoreY + 2, bestStr, {
+            fontFamily: pixelFont,
+            fontSize: '8px',
+            color: '#000000',
+        }).setOrigin(1, 0).setAlpha(0.6).setDepth(10);
 
-        // Foreground fill (starts at 0 width)
-        this.meterFill = this.add.rectangle(meterX, meterY, 0, meterH, 0x44ff44);
-        this.meterFill.setOrigin(0, 0);
-        this.meterFill.setDepth(11);
+        this.bestMain = this.add.text(bestX, scoreY, bestStr, {
+            fontFamily: pixelFont,
+            fontSize: '8px',
+            color: '#ffffff',
+        }).setOrigin(1, 0).setDepth(11);
 
-        // Meter label
-        this.add.text(meterX, meterY - 16, 'OPBLAZEN', {
-            fontFamily: '"Courier New", Courier, monospace',
-            fontSize: '11px',
-            color: '#aabbcc',
-        }).setDepth(10);
+        // ── Inflate meter (Graphics, redrawn every frame) ─────────────────
+        const meterStartX = 10;
+        const meterLabelY = GAME_HEIGHT - 44;
+
+        this.add.text(meterStartX, meterLabelY, 'PUFF', {
+            fontFamily: pixelFont,
+            fontSize: '8px',
+            color: '#88aabb',
+        }).setDepth(20);
+
+        this.meterGfx = this.add.graphics().setDepth(20);
 
         // ── Input ─────────────────────────────────────────────────────────
         this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -101,21 +130,15 @@ export class GameScene extends Phaser.Scene {
             if (!this.isGameOver) this.fish.deflate();
         });
 
-        // ── Obstacle spawn timer ──────────────────────────────────────────
-        this.spawnTimer = this.time.addEvent({
-            delay: SPAWN_INTERVAL_INITIAL,
-            callback: this.spawnObstacle,
-            callbackScope: this,
-            loop: true,
-        });
-
-        // Spawn one immediately so the player isn't staring at a blank screen
+        // Spawn one immediately, which also schedules the next spawn
         this.spawnObstacle();
     }
 
     /** Main game loop – called every frame. */
-    update(): void {
+    update(_time: number, delta: number): void {
         if (this.isGameOver) return;
+
+        this.parallax.update(delta);
 
         // ── Input polling ─────────────────────────────────────────────────
         if (this.spaceKey.isDown) {
@@ -144,7 +167,17 @@ export class GameScene extends Phaser.Scene {
             if (!obs.passed && obs.x + 64 < this.fish.x) {
                 obs.passed = true;
                 this.score++;
-                this.scoreText.setText(String(this.score));
+                const scoreStr = String(this.score);
+                this.scoreOutlines.forEach(t => t.setText(scoreStr));
+                this.scoreMain.setText(scoreStr);
+
+                // Update best score display if beaten
+                if (this.score > this.bestScore) {
+                    this.bestScore = this.score;
+                    const bestStr = `BEST:${this.bestScore}`;
+                    this.bestShadow.setText(bestStr);
+                    this.bestMain.setText(bestStr);
+                }
             }
 
             // Collision: circle vs two AABBs
@@ -165,7 +198,8 @@ export class GameScene extends Phaser.Scene {
         this.updateMeter();
     }
 
-    /** Spawns a new obstacle at the right edge with a random gap position. */
+    /** Spawns a new obstacle at the right edge with a random gap position,
+     *  then schedules the next spawn using the current dynamic interval. */
     private spawnObstacle(): void {
         if (this.isGameOver) return;
 
@@ -177,23 +211,40 @@ export class GameScene extends Phaser.Scene {
         );
         const obs = new Obstacle(this, GAME_WIDTH + 10, gapY, gap);
         this.obstacles.push(obs);
+
+        // Schedule next spawn with the delay re-evaluated at spawn time
+        this.spawnTimer = this.time.delayedCall(
+            this.currentSpawnInterval(),
+            this.spawnObstacle,
+            [],
+            this
+        );
+    }
+
+    /**
+     * Returns the spawn interval for the current score, linearly interpolated
+     * from SPAWN_INTERVAL_INITIAL down to SPAWN_INTERVAL_MIN over DIFFICULTY_RAMP_SPAWN points.
+     */
+    private currentSpawnInterval(): number {
+        const t = Math.min(this.score / DIFFICULTY_RAMP_SPAWN, 1);
+        return SPAWN_INTERVAL_INITIAL + (SPAWN_INTERVAL_MIN - SPAWN_INTERVAL_INITIAL) * t;
     }
 
     /**
      * Returns the gap size for the current score, linearly interpolated from
-     * GAP_SIZE_INITIAL down to GAP_SIZE_MIN over DIFFICULTY_RAMP_SCORE points.
+     * GAP_SIZE_INITIAL down to GAP_SIZE_MIN over DIFFICULTY_RAMP_GAP points.
      */
     private currentGapSize(): number {
-        const t = Math.min(this.score / DIFFICULTY_RAMP_SCORE, 1);
+        const t = Math.min(this.score / DIFFICULTY_RAMP_GAP, 1);
         return Math.round(GAP_SIZE_INITIAL + (GAP_SIZE_MIN - GAP_SIZE_INITIAL) * t);
     }
 
     /**
      * Returns the obstacle speed for the current score, linearly interpolated
-     * from OBSTACLE_SPEED_INITIAL up to OBSTACLE_SPEED_MAX over DIFFICULTY_RAMP_SCORE points.
+     * from OBSTACLE_SPEED_INITIAL up to OBSTACLE_SPEED_MAX over DIFFICULTY_RAMP_SPEED points.
      */
     private currentSpeed(): number {
-        const t = Math.min(this.score / DIFFICULTY_RAMP_SCORE, 1);
+        const t = Math.min(this.score / DIFFICULTY_RAMP_SPEED, 1);
         return OBSTACLE_SPEED_INITIAL + (OBSTACLE_SPEED_MAX - OBSTACLE_SPEED_INITIAL) * t;
     }
 
@@ -215,18 +266,37 @@ export class GameScene extends Phaser.Scene {
         return dx * dx + dy * dy < r * r;
     }
 
-    /** Redraws the inflate meter fill width and colour every frame. */
+    /**
+     * Redraws the 8-block inflate meter every frame using a Graphics object.
+     * Each block: 1 px black outline (16×16), then 14×14 fill.
+     * Empty: 0x223344 · Blocks 1–4: 0x44cc44 · 5–6: 0xff8800 · 7–8: 0xff2200
+     */
     private updateMeter(): void {
-        const ratio = this.fish.inflateLevel / FISH_MAX_INFLATE;
-        const maxW = 120;
-        this.meterFill.width = ratio * maxW;
+        const BLOCK  = 14;
+        const OUTLINE = 16;   // 1 px extra each side
+        const GAP    = 3;
+        const startX = 10;
+        const blockY = GAME_HEIGHT - 26;
+        const filled = Math.round((this.fish.inflateLevel / FISH_MAX_INFLATE) * 8);
 
-        if (ratio >= 0.8) {
-            this.meterFill.setFillStyle(0xff3300);
-        } else if (ratio >= 0.5) {
-            this.meterFill.setFillStyle(0xff8800);
-        } else {
-            this.meterFill.setFillStyle(0x44ff44);
+        this.meterGfx.clear();
+
+        for (let i = 0; i < 8; i++) {
+            const bx = startX + i * (BLOCK + GAP);
+
+            // Outline
+            this.meterGfx.fillStyle(0x000000, 1);
+            this.meterGfx.fillRect(bx - 1, blockY - 1, OUTLINE, OUTLINE);
+
+            // Fill
+            let color: number;
+            if (i < filled) {
+                color = i >= 6 ? 0xff2200 : i >= 4 ? 0xff8800 : 0x44cc44;
+            } else {
+                color = 0x223344;
+            }
+            this.meterGfx.fillStyle(color, 1);
+            this.meterGfx.fillRect(bx, blockY, BLOCK, BLOCK);
         }
     }
 
@@ -241,7 +311,7 @@ export class GameScene extends Phaser.Scene {
         if (this.isGameOver) return;
         this.isGameOver = true;
 
-        this.spawnTimer.remove();
+        this.spawnTimer?.remove();
         this.fish.deflate();
 
         // Persist scores
@@ -259,6 +329,22 @@ export class GameScene extends Phaser.Scene {
             alpha: 0,
             duration: 400,
             ease: 'Back.easeIn',
+        });
+
+        // Floating gold score popup at the fish position
+        const popup = this.add.text(this.fish.x, this.fish.y - 20, String(this.score), {
+            fontFamily: '"Press Start 2P"',
+            fontSize: '24px',
+            color: '#ffdd00',
+        }).setOrigin(0.5).setDepth(20);
+
+        this.tweens.add({
+            targets: popup,
+            y: popup.y - 80,
+            alpha: 0,
+            duration: 600,
+            ease: 'Quad.easeOut',
+            onComplete: () => popup.destroy(),
         });
 
         // Spawn a small burst of bubble particles

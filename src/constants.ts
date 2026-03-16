@@ -7,17 +7,17 @@ export const FISH_BASE_RADIUS = 18;
 /** Maximum inflate increment on top of base radius */
 export const FISH_MAX_INFLATE = 14;
 
-/** How fast the fish inflates per frame */
-export const INFLATE_SPEED = 0.35;
-/** How fast the fish deflates per frame */
-export const DEFLATE_SPEED = 0.28;
+/** Upward velocity added per frame while inflating — controls how responsive the lift feels. */
+export const INFLATE_SPEED = 0.32;
+/** Downward velocity added per frame while deflating — small nudge that assists gravity, not replaces it. */
+export const DEFLATE_SPEED = 0.18;
 
-/** Downward gravity per frame */
-export const GRAVITY = 0.16;
-/** Maximum upward velocity (negative = up) */
-export const MAX_VEL_UP = -5;
-/** Maximum downward velocity */
-export const MAX_VEL_DOWN = 4;
+/** Downward pull per frame — main driver of falling speed. */
+export const GRAVITY = 0.22;
+/** Terminal upward velocity — caps how fast the fish can rise. */
+export const MAX_VEL_UP = -4.5;
+/** Terminal downward velocity — caps how fast the fish can fall. */
+export const MAX_VEL_DOWN = 5;
 
 // ── Progressive difficulty ────────────────────────────────────────────────────
 
@@ -36,8 +36,12 @@ export const SPAWN_INTERVAL_INITIAL = 2400;
 /** Minimum spawn interval in ms at full difficulty. */
 export const SPAWN_INTERVAL_MIN = 1300;
 
-/** Score at which full difficulty is reached (linear ramp). */
-export const DIFFICULTY_RAMP_SCORE = 30;
+/** Score at which the gap stops narrowing — gaps close slowly. */
+export const DIFFICULTY_RAMP_GAP = 40;
+/** Score at which obstacle speed peaks — speed escalates first. */
+export const DIFFICULTY_RAMP_SPEED = 25;
+/** Score at which spawn frequency maxes out — frequency builds mid-game. */
+export const DIFFICULTY_RAMP_SPAWN = 35;
 
 /** @deprecated Use GAP_SIZE_MIN – kept only for backwards compat. */
 export const GAP_SIZE = GAP_SIZE_MIN;
