@@ -43,7 +43,7 @@ export class MenuScene extends Phaser.Scene {
         });
 
         // Subtitle / instruction text
-        const sub = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.56, 'Tik om te spelen', {
+        const sub = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.56, 'TAP TO PLAY', {
             fontFamily: '"Courier New", Courier, monospace',
             fontSize: '26px',
             color: '#ffffff',

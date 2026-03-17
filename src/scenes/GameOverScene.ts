@@ -5,7 +5,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
  * GameOverScene – Flappy Bird-style cartoon game-over screen.
  *
  * Layout:
- *   "PATS!" headline  – Press Start 2P, 4-corner outline trick, shake tween
+ *   "POP!!" headline  – Press Start 2P, 4-corner outline trick, shake tween
  *   Score panel       – beige rounded rect (280×160), medal circle on left,
  *                       animated score counter + best score on right
  *   "TAP TO RETRY"    – green outlined button below the panel
@@ -26,19 +26,19 @@ export class GameOverScene extends Phaser.Scene {
         const highScore = (this.registry.get('highScore') as number | undefined) ?? 0;
         const isNewRecord = lastScore >= highScore && lastScore > 0;
 
-        // ── "PATS!" headline (4-corner outline + fill) ────────────────────
+        // ── "POP!!" headline (4-corner outline + fill) ────────────────────
         const headlineY = Math.round(GAME_HEIGHT * 0.22);
 
         const outlineOffsets: [number, number][] = [[-3, -3], [3, -3], [-3, 3], [3, 3]];
         outlineOffsets.forEach(([dx, dy]) => {
-            this.add.text(cx + dx, headlineY + dy, 'PATS!', {
+            this.add.text(cx + dx, headlineY + dy, 'POP!!', {
                 fontFamily: pixelFont,
                 fontSize: '64px',
                 color: '#000000',
             }).setOrigin(0.5).setDepth(10);
         });
 
-        const headline = this.add.text(cx, headlineY, 'PATS!', {
+        const headline = this.add.text(cx, headlineY, 'POP!!', {
             fontFamily: pixelFont,
             fontSize: '64px',
             color: '#e83820',
