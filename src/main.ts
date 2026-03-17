@@ -18,6 +18,10 @@ const config: Phaser.Types.Core.GameConfig = {
             debug: false,
         },
     },
+    fps: {
+        target: 60,
+        forceSetTimeOut: false,
+    },
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,

@@ -8,33 +8,33 @@ export const FISH_BASE_RADIUS = 18;
 export const FISH_MAX_INFLATE = 14;
 
 /** Upward velocity added per frame while inflating — controls how responsive the lift feels. */
-export const INFLATE_SPEED = 0.32;
+export const INFLATE_SPEED = 0.85;
 /** Downward velocity added per frame while deflating — small nudge that assists gravity, not replaces it. */
-export const DEFLATE_SPEED = 0.18;
+export const DEFLATE_SPEED = 0.45;
 
 /** Downward pull per frame — main driver of falling speed. */
-export const GRAVITY = 0.22;
+export const GRAVITY = 0.45;
 /** Terminal upward velocity — caps how fast the fish can rise. */
-export const MAX_VEL_UP = -4.5;
+export const MAX_VEL_UP = -10;
 /** Terminal downward velocity — caps how fast the fish can fall. */
-export const MAX_VEL_DOWN = 5;
+export const MAX_VEL_DOWN = 12;
 
 // ── Progressive difficulty ────────────────────────────────────────────────────
 
 /** Starting gap between the coral columns (wide – easy). */
-export const GAP_SIZE_INITIAL = 230;
+export const GAP_SIZE_INITIAL = 200;
 /** Minimum gap reached at full difficulty. */
-export const GAP_SIZE_MIN = 130;
+export const GAP_SIZE_MIN = 140;
 
 /** Starting obstacle speed (slow – easy). */
-export const OBSTACLE_SPEED_INITIAL = 1.4;
+export const OBSTACLE_SPEED_INITIAL = 4.5;
 /** Maximum obstacle speed reached at full difficulty. */
-export const OBSTACLE_SPEED_MAX = 3.2;
+export const OBSTACLE_SPEED_MAX = 7.0;
 
 /** Starting spawn interval in ms (more breathing room). */
-export const SPAWN_INTERVAL_INITIAL = 2400;
+export const SPAWN_INTERVAL_INITIAL = 2000;
 /** Minimum spawn interval in ms at full difficulty. */
-export const SPAWN_INTERVAL_MIN = 1300;
+export const SPAWN_INTERVAL_MIN = 1400;
 
 /** Score at which the gap stops narrowing — gaps close slowly. */
 export const DIFFICULTY_RAMP_GAP = 40;
