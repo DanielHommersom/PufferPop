@@ -121,7 +121,7 @@ export class GameOverScene extends Phaser.Scene {
             onComplete: () => { scoreText.setText(String(lastScore)); },
         });
 
-    const bestLabel = isNewRecord ? 'NEW HIGHEST SCORE!' : 'HIGHEST SCORE';
+    const bestLabel = isNewRecord ? 'NEW HIGH SCORE!' : 'HIGHEST SCORE';
         const bestColor = isNewRecord ? '#c05000' : '#8a7a5a';
 
         this.add.text(rightCX, panelY + 90, bestLabel, {

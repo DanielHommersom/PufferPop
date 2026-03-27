@@ -279,33 +279,40 @@ export class GameScene extends Phaser.Scene {
         this.muteGfx.fillStyle(0x000000, 0.45);
         this.muteGfx.fillCircle(cx, cy, 22);
 
-        // Speaker body
-        const bx = cx - 9;
-        const by = cy - 5;
-        this.muteGfx.fillStyle(this.muted ? 0x888888 : 0xffffff, 1);
-        this.muteGfx.fillRect(bx, by, 6, 10);
+        const color = this.muted ? 0x888888 : 0xffffff;
+        this.muteGfx.fillStyle(color, 1);
 
-        // Speaker horn
+        // Speaker body (rect, left side)
+        this.muteGfx.fillRect(cx - 12, cy - 4, 5, 8);
+
+        // Speaker cone (trapezoid: narrow at body, wide at mouth)
+        // Left edge matches body right edge: x=cx-7, y=cy±4
+        // Right (mouth) edge: x=cx+3, y=cy±8
         this.muteGfx.fillTriangle(
-            bx + 6, by - 3,
-            bx + 6, by + 13,
-            bx + 14, by + 5,
+            cx - 7, cy - 4,
+            cx - 7, cy + 4,
+            cx + 3, cy + 8,
+        );
+        this.muteGfx.fillTriangle(
+            cx - 7, cy - 4,
+            cx + 3, cy + 8,
+            cx + 3, cy - 8,
         );
 
         if (!this.muted) {
-            // Sound waves
+            // Sound wave arcs centered at the cone mouth (cx+3)
             this.muteGfx.lineStyle(2, 0xffffff, 1);
             this.muteGfx.beginPath();
-            this.muteGfx.arc(cx + 2, cy, 10, -0.6, 0.6, false);
+            this.muteGfx.arc(cx + 3, cy, 6, -0.6, 0.6, false);
             this.muteGfx.strokePath();
             this.muteGfx.beginPath();
-            this.muteGfx.arc(cx + 2, cy, 15, -0.7, 0.7, false);
+            this.muteGfx.arc(cx + 3, cy, 11, -0.65, 0.65, false);
             this.muteGfx.strokePath();
         } else {
-            // Red ×
+            // Red × to the right of the cone
             this.muteGfx.lineStyle(2.5, 0xff3333, 1);
-            this.muteGfx.lineBetween(cx + 5, cy - 6, cx + 12, cy + 1);
-            this.muteGfx.lineBetween(cx + 12, cy - 6, cx + 5, cy + 1);
+            this.muteGfx.lineBetween(cx + 6, cy - 7, cx + 14, cy + 1);
+            this.muteGfx.lineBetween(cx + 14, cy - 7, cx + 6, cy + 1);
         }
     }
 
