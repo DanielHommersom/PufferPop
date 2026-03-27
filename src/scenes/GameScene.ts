@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Preferences } from '@capacitor/preferences';
 import { PufferFish } from '../objects/PufferFish';
 import { Obstacle } from '../objects/Obstacle';
 import { ParallaxBackground } from '../objects/ParallaxBackground';
@@ -87,6 +88,16 @@ export class GameScene extends Phaser.Scene {
             fontFamily: pixelFont, fontSize: '8px', color: '#ffffff',
         }).setOrigin(1, 0).setDepth(11);
 
+        // Load persisted high score in background; update display if higher than registry value
+        this.loadHighScore().then(persisted => {
+            if (persisted > this.bestScore) {
+                this.bestScore = persisted;
+                this.registry.set('highScore', persisted);
+                this.bestShadow.setText(`Highest Score: ${persisted}`);
+                this.bestMain.setText(`Highest Score: ${persisted}`);
+            }
+        }).catch(() => { /* registry fallback already set above */ });
+
         // ── Inflate meter ──────────────────────────────────────────────────
         this.add.text(10, GAME_HEIGHT - 44, 'PUFF', {
             fontFamily: pixelFont, fontSize: '8px', color: '#88aabb',
@@ -140,7 +151,7 @@ export class GameScene extends Phaser.Scene {
 
         const fishR = this.fish.getRadius();
         if (this.fish.y - fishR < 0 || this.fish.y + fishR > GAME_HEIGHT) {
-            this.triggerGameOver();
+            void this.triggerGameOver();
             return;
         }
 
@@ -165,7 +176,7 @@ export class GameScene extends Phaser.Scene {
 
             if (this.circleCollidesRect(obs.getTopRect()) ||
                 this.circleCollidesRect(obs.getBottomRect())) {
-                this.triggerGameOver();
+                void this.triggerGameOver();
                 return;
             }
 
@@ -176,6 +187,29 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.updateMeter();
+    }
+
+    /** Loads the persisted high score. Falls back to registry if Preferences unavailable (e.g. browser). */
+    private async loadHighScore(): Promise<number> {
+        try {
+            const { value } = await Preferences.get({ key: 'highScore' });
+            return value !== null ? parseInt(value, 10) : 0;
+        } catch {
+            return (this.registry.get('highScore') as number | undefined) ?? 0;
+        }
+    }
+
+    /** Saves score to persistent storage if it beats the current high score. */
+    private async saveHighScore(score: number): Promise<void> {
+        const current = await this.loadHighScore();
+        if (score > current) {
+            try {
+                await Preferences.set({ key: 'highScore', value: String(score) });
+            } catch {
+                // browser fallback: registry is updated below
+            }
+            this.registry.set('highScore', score);
+        }
     }
 
     private spawnObstacle(): void {
@@ -325,7 +359,7 @@ export class GameScene extends Phaser.Scene {
 
     // ── Game over ──────────────────────────────────────────────────────────────
 
-    private triggerGameOver(): void {
+    private async triggerGameOver(): Promise<void> {
         if (this.isGameOver) return;
         this.isGameOver = true;
 
@@ -334,10 +368,8 @@ export class GameScene extends Phaser.Scene {
         this.playGameOverSound();
 
         this.registry.set('lastScore', this.score);
-        const previous = (this.registry.get('highScore') as number | undefined) ?? 0;
-        if (this.score > previous) {
-            this.registry.set('highScore', this.score);
-        }
+        await this.saveHighScore(this.score);
+        this.registry.set('highScore', await this.loadHighScore());
 
         this.tweens.add({
             targets: this.fish,

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Preferences } from '@capacitor/preferences';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 
 /**
@@ -61,6 +62,22 @@ export class MenuScene extends Phaser.Scene {
             yoyo: true,
             repeat: -1,
         });
+
+        // Best score – load async, add text when ready
+        const bestTxt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.70, '', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '13px',
+            color: '#ffdd88',
+            stroke: '#0a1a3a',
+            strokeThickness: 4,
+        }).setOrigin(0.5);
+
+        Preferences.get({ key: 'highScore' })
+            .then(({ value }) => {
+                const best = value !== null ? parseInt(value, 10) : 0;
+                if (best > 0) bestTxt.setText(`Highest Score: ${best}`);
+            })
+            .catch(() => { /* no best score to show */ });
 
         // Version / credits tiny text
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.92, 'v1.0.0', {
