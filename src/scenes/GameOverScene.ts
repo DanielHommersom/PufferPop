@@ -140,7 +140,7 @@ export class GameOverScene extends Phaser.Scene {
         const BTN_W  = 260;
         const BTN_H  = 52;
         const btnX   = Math.round((GAME_WIDTH - BTN_W) / 2);
-        const btnY   = Math.round(GAME_HEIGHT * 0.76);
+        const btnY   = Math.round(GAME_HEIGHT * 0.74);
 
         const btnGfx = this.add.graphics().setDepth(14);
 
@@ -172,9 +172,51 @@ export class GameOverScene extends Phaser.Scene {
             repeat: -1,
         });
 
-        // ── Input – restart on tap or SPACE (600 ms delay) ────────────────
+        // ── "SHARE ON X" button ───────────────────────────────────────────
+        const SHARE_W = 260;
+        const SHARE_H = 48;
+        const shareX  = Math.round((GAME_WIDTH - SHARE_W) / 2);
+        const shareY  = btnY + BTN_H + 14;
+
+        const shareGfx = this.add.graphics().setDepth(14);
+
+        // Outline
+        shareGfx.fillStyle(0x000000, 1);
+        shareGfx.fillRoundedRect(shareX - 3, shareY - 3, SHARE_W + 6, SHARE_H + 6, 11);
+
+        // Fill (X black)
+        shareGfx.fillStyle(0x111111, 1);
+        shareGfx.fillRoundedRect(shareX, shareY, SHARE_W, SHARE_H, 8);
+
+        // Top highlight strip
+        shareGfx.fillStyle(0x333333, 1);
+        shareGfx.fillRoundedRect(shareX + 6, shareY + 5, SHARE_W - 12, 8, 4);
+
+        this.add.text(cx, shareY + SHARE_H / 2, 'SHARE ON X  𝕏', {
+            fontFamily: pixelFont,
+            fontSize: '9px',
+            color: '#ffffff',
+        }).setOrigin(0.5).setDepth(15);
+
+        // ── Input – retry on button tap or SPACE (600 ms delay) ──────────
         this.time.delayedCall(600, () => {
-            this.input.once('pointerdown', this.restartGame, this);
+            btnGfx.setInteractive(
+                new Phaser.Geom.Rectangle(btnX, btnY, BTN_W, BTN_H),
+                Phaser.Geom.Rectangle.Contains,
+            );
+            btnGfx.once('pointerdown', this.restartGame, this);
+
+            shareGfx.setInteractive(
+                new Phaser.Geom.Rectangle(shareX, shareY, SHARE_W, SHARE_H),
+                Phaser.Geom.Rectangle.Contains,
+            );
+            shareGfx.on('pointerdown', () => {
+                const tweet = encodeURIComponent(
+                    `I scored ${highScore} in Puffer Pop! 🐡 Can you beat my score?`,
+                );
+                window.open(`https://twitter.com/intent/tweet?text=${tweet}`, '_blank');
+            });
+
             this.input.keyboard?.once('keydown-SPACE', this.restartGame, this);
         });
     }

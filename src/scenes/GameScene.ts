@@ -325,36 +325,89 @@ export class GameScene extends Phaser.Scene {
         if (this.muted) return;
         const ctx = this.getAudioCtx();
         if (!ctx) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(380, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.12);
-        gain.gain.setValueAtTime(0.28, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.12);
+        const t = ctx.currentTime;
+        const dur = 0.22;
+
+        // Body tone – low pitch sweeping up, like air filling a balloon
+        const body = ctx.createOscillator();
+        const bodyGain = ctx.createGain();
+        body.connect(bodyGain);
+        bodyGain.connect(ctx.destination);
+        body.type = 'sine';
+        body.frequency.setValueAtTime(80, t);
+        body.frequency.exponentialRampToValueAtTime(260, t + dur);
+        bodyGain.gain.setValueAtTime(0.0, t);
+        bodyGain.gain.linearRampToValueAtTime(0.32, t + 0.04);
+        bodyGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        body.start(t);
+        body.stop(t + dur);
+
+        // Bubble pop overtone – short mid blip at the end
+        const pop = ctx.createOscillator();
+        const popGain = ctx.createGain();
+        pop.connect(popGain);
+        popGain.connect(ctx.destination);
+        pop.type = 'sine';
+        pop.frequency.setValueAtTime(520, t + dur - 0.04);
+        pop.frequency.exponentialRampToValueAtTime(320, t + dur + 0.05);
+        popGain.gain.setValueAtTime(0.0, t + dur - 0.04);
+        popGain.gain.linearRampToValueAtTime(0.18, t + dur);
+        popGain.gain.exponentialRampToValueAtTime(0.001, t + dur + 0.05);
+        pop.start(t + dur - 0.04);
+        pop.stop(t + dur + 0.06);
     }
 
     private playGameOverSound(): void {
         if (this.muted) return;
         const ctx = this.getAudioCtx();
         if (!ctx) return;
-        [392, 311, 233].forEach((freq, i) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = 'square';
-            const t = ctx.currentTime + i * 0.18;
-            osc.frequency.setValueAtTime(freq, t);
-            gain.gain.setValueAtTime(0.18, t);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-            osc.start(t);
-            osc.stop(t + 0.16);
-        });
+        const t = ctx.currentTime;
+
+        // Sharp thud – low-frequency body impact of the pop
+        const thud = ctx.createOscillator();
+        const thudGain = ctx.createGain();
+        thud.connect(thudGain);
+        thudGain.connect(ctx.destination);
+        thud.type = 'sine';
+        thud.frequency.setValueAtTime(180, t);
+        thud.frequency.exponentialRampToValueAtTime(40, t + 0.18);
+        thudGain.gain.setValueAtTime(0.7, t);
+        thudGain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        thud.start(t);
+        thud.stop(t + 0.18);
+
+        // Burst of noise – the actual "pop" of the skin splitting
+        const bufSize = Math.ceil(ctx.sampleRate * 0.08);
+        const noiseBuffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        const burst = ctx.createBufferSource();
+        burst.buffer = noiseBuffer;
+        const burstFilter = ctx.createBiquadFilter();
+        burstFilter.type = 'lowpass';
+        burstFilter.frequency.value = 1800;
+        const burstGain = ctx.createGain();
+        burstGain.gain.setValueAtTime(0.6, t);
+        burstGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        burst.connect(burstFilter);
+        burstFilter.connect(burstGain);
+        burstGain.connect(ctx.destination);
+        burst.start(t);
+        burst.stop(t + 0.08);
+
+        // Deflation wheeze – pitch falling fast, like air escaping
+        const wheeze = ctx.createOscillator();
+        const wheezeGain = ctx.createGain();
+        wheeze.connect(wheezeGain);
+        wheezeGain.connect(ctx.destination);
+        wheeze.type = 'sawtooth';
+        wheeze.frequency.setValueAtTime(340, t + 0.05);
+        wheeze.frequency.exponentialRampToValueAtTime(60, t + 0.45);
+        wheezeGain.gain.setValueAtTime(0.0, t + 0.05);
+        wheezeGain.gain.linearRampToValueAtTime(0.18, t + 0.1);
+        wheezeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        wheeze.start(t + 0.05);
+        wheeze.stop(t + 0.46);
     }
 
     // ── Game over ──────────────────────────────────────────────────────────────
