@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="55 0 584 280" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="50%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#60A5FA"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4C1D95"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="g4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="50%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- No background rect — transparent for iOS use -->
+
+  <!-- Diamond facets -->
+  <polygon points="105,90 175,70 120,120" fill="url(#g2)" opacity="0.9"/>
+  <polygon points="105,90 85,140 120,120" fill="#5B21B6" opacity="0.9"/>
+  <polygon points="175,70 210,120 120,120" fill="url(#g1)" opacity="0.95"/>
+  <polygon points="175,70 245,90 210,120" fill="url(#g2)" opacity="0.75"/>
+  <polygon points="245,90 265,140 210,120" fill="url(#g4)" opacity="0.85"/>
+  <polygon points="85,140 120,120 175,255" fill="#1E1B4B" opacity="0.95"/>
+  <polygon points="120,120 210,120 175,255" fill="url(#g3)" opacity="0.9"/>
+  <polygon points="210,120 265,140 175,255" fill="#1D4ED8" opacity="0.85"/>
+  <polygon points="85,140 175,255 265,140" fill="url(#g1)" opacity="0.15"/>
+
+  <!-- Edge lines -->
+  <polygon points="105,90 85,140 120,120 175,70" fill="none" stroke="rgba(167,139,250,0.3)" stroke-width="0.5"/>
+  <polygon points="245,90 265,140 210,120 175,70" fill="none" stroke="rgba(96,165,250,0.3)" stroke-width="0.5"/>
+
+  <!-- Glow under tip -->
+  <ellipse cx="175" cy="258" rx="50" ry="7" fill="#3B82F6" opacity="0.18"/>
+
+  <!-- Text — uses system fonts available on iOS -->
+  <text x="305" y="130" fill="#F8FAFC" font-size="52" font-weight="900" letter-spacing="-0.5" dominant-baseline="middle">DIGITAL</text>
+  <text x="305" y="194" fill="url(#textGrad)" font-size="52" font-weight="900" letter-spacing="-0.5" dominant-baseline="middle">DIAMONDS</text>
+
+</svg>

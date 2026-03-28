@@ -1,30 +1,104 @@
 import Phaser from 'phaser';
 import { OceanBackground } from '../objects/OceanBackground';
+import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 
 /**
- * BootScene – first scene that runs on startup.
+ * BootScene – splash screen + asset bootstrap.
  *
- * Generates all shared textures (background, bubble) then launches MenuScene.
- * Fish and coral are drawn procedurally in GameScene via PufferFish / Obstacle,
- * so no placeholder textures are needed for those.
+ * Flow:
+ *   1. preload()  – loads the DigitalDiamonds SVG logo
+ *   2. create()   – generates shared textures (background, bubble),
+ *                   then plays the splash animation
+ *   3. After animation completes → starts MenuScene
  */
 export class BootScene extends Phaser.Scene {
     constructor() {
         super({ key: 'BootScene' });
     }
 
-    /** Preload real assets here when available (sounds, spritesheets, etc.). */
-    preload(): void {}
+    preload(): void {
+        this.load.svg('dd-logo', 'assets/DigitalDiamonds-Logo.svg', { width: 620, height: 280 });
+    }
 
-    /** Generate all shared textures, then launch MenuScene. */
     create(): void {
-        // Cartoon ocean background used by MenuScene, GameOverScene, and GameScene
+        // Generate shared textures immediately so MenuScene has them ready
         OceanBackground.generate(this, 'background');
-
-        // Bubble used in the death particle burst
         this.generateBubbleTexture();
 
-        this.scene.start('MenuScene');
+        const cx = GAME_WIDTH / 2;
+        const cy = GAME_HEIGHT / 2;
+
+        // ── Background – deep dark blue-purple to complement the diamond gradient ──
+        this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x0c0c20);
+
+        // ── Soft radial glow behind the diamond ──────────────────────────────────
+        // Concentric circles from innermost (bright) to outermost (faint)
+        const glowColors: [number, number][] = [
+            [0x6d28d9, 0.18],
+            [0x5b21b6, 0.13],
+            [0x4c1d95, 0.09],
+            [0x3b0e6e, 0.06],
+            [0x1e0a40, 0.04],
+        ];
+        const glow = this.add.graphics().setAlpha(0);
+        glowColors.forEach(([color, alpha], i) => {
+            glow.fillStyle(color, alpha);
+            glow.fillCircle(cx, cy, 220 - i * 30);
+        });
+
+        // ── Logo ─────────────────────────────────────────────────────────────────
+        const logoScale = Math.min((GAME_WIDTH * 0.85) / 620, 1);
+        const logo = this.add.image(cx, cy, 'dd-logo')
+            // Visual content center in SVG space ≈ (332, 168) within a 620×280 viewBox.
+            // Using setOrigin to map that point to (cx, cy) on screen instead of the
+            // geometric center (310, 140), which would leave the content off-center.
+            .setOrigin(332 / 620, 168 / 280)
+            .setScale(logoScale * 0.8)
+            .setAlpha(0);
+
+        // ── Animation sequence ───────────────────────────────────────────────────
+        // 1. Fade in + spring scale  (650 ms)
+        this.tweens.add({
+            targets: [glow, logo],
+            alpha: 1,
+            duration: 600,
+            ease: 'Quad.easeOut',
+        });
+
+        this.tweens.add({
+            targets: logo,
+            scaleX: logoScale,
+            scaleY: logoScale,
+            duration: 700,
+            ease: 'Back.easeOut',
+            onComplete: () => {
+
+                // 2. Subtle shimmer pulse on the logo (2 × 400 ms)
+                this.tweens.add({
+                    targets: logo,
+                    alpha: 0.75,
+                    duration: 380,
+                    ease: 'Sine.easeInOut',
+                    yoyo: true,
+                    repeat: 1,
+                    onComplete: () => {
+
+                        // 3. Hold, then fade everything out
+                        this.time.delayedCall(600, () => {
+                            this.tweens.add({
+                                targets: [glow, logo],
+                                alpha: 0,
+                                duration: 480,
+                                ease: 'Quad.easeIn',
+                                onComplete: () => {
+                                    this.scene.start('MenuScene');
+                                },
+                            });
+                        });
+                    },
+                });
+            },
+        });
     }
 
     /**
