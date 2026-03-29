@@ -9,8 +9,8 @@ const config: CapacitorConfig = {
       appId: 'ca-app-pub-3366446717708247~6010209537',
     },
     SplashScreen: {
-      launchShowDuration: 2000,
-      launchAutoHide: true,
+      launchShowDuration: 10000, // safety fallback — BootScene calls SplashScreen.hide() first
+      launchAutoHide: false,
       backgroundColor: '#4ec0ca',
       showSpinner: false,
     }

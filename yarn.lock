@@ -10,6 +10,11 @@
     "@capacitor/core" "^8.0.0"
     "@rdlabo/capacitor-docgen" "^0.4.1"
 
+"@capacitor/browser@^8.0.3":
+  version "8.0.3"
+  resolved "https://registry.npmjs.org/@capacitor/browser/-/browser-8.0.3.tgz"
+  integrity sha512-WJWPHEPbweiFoHYmVlCbZf5yrqJ2Rchx2Xvbmd+3Lf+Zkpq3nXBThThY2CF69lYEg1NINGF9BcHThIOEU1gZlQ==
+
 "@capacitor/cli@^8.2.0":
   version "8.2.0"
   resolved "https://registry.npmjs.org/@capacitor/cli/-/cli-8.2.0.tgz"

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Browser } from '@capacitor/browser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 
 /**
@@ -214,7 +215,7 @@ export class GameOverScene extends Phaser.Scene {
                 const tweet = encodeURIComponent(
                     `I scored ${highScore} in Puffer Pop! 🐡 Can you beat my score?`,
                 );
-                window.open(`https://twitter.com/intent/tweet?text=${tweet}`, '_blank');
+                void Browser.open({ url: `https://twitter.com/intent/tweet?text=${tweet}` });
             });
 
             this.input.keyboard?.once('keydown-SPACE', this.restartGame, this);

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { OceanBackground } from '../objects/OceanBackground';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 
@@ -57,6 +58,10 @@ export class BootScene extends Phaser.Scene {
             .setAlpha(0);
 
         // ── Animation sequence ───────────────────────────────────────────────────
+        // Dismiss the native splash slightly after the DD background is visible,
+        // so the crossfade goes: splash.png → dark background → DD logo
+        this.time.delayedCall(100, () => void SplashScreen.hide({ fadeOutDuration: 400 }));
+
         // 1. Fade in + spring scale  (650 ms)
         this.tweens.add({
             targets: [glow, logo],
