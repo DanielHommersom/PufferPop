@@ -4,7 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.pufferpop.app',
   appName: 'Puffer Pop',
   webDir: 'dist',
-    plugins: {
+  plugins: {
+    AdMob: {
+      appId: 'ca-app-pub-3366446717708247~6010209537',
+    },
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
