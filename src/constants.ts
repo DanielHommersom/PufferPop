@@ -27,12 +27,12 @@ export const GAP_SIZE_INITIAL = 230;
 export const GAP_SIZE_MIN = 130;
 
 /** Starting obstacle speed (slow – easy). */
-export const OBSTACLE_SPEED_INITIAL = 1.4;
+export const OBSTACLE_SPEED_INITIAL = 2.5;
 /** Maximum obstacle speed reached at full difficulty. */
-export const OBSTACLE_SPEED_MAX = 3.2;
+export const OBSTACLE_SPEED_MAX = 4.5;
 
 /** Starting spawn interval in ms (more breathing room). */
-export const SPAWN_INTERVAL_INITIAL = 2400;
+export const SPAWN_INTERVAL_INITIAL = 2000;
 /** Minimum spawn interval in ms at full difficulty. */
 export const SPAWN_INTERVAL_MIN = 1300;
 
