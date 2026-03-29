@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Preferences } from '@capacitor/preferences';
+import { AdMob, InterstitialAdPluginEvents } from '@capacitor-community/admob';
 import { PufferFish } from '../objects/PufferFish';
 import { Obstacle } from '../objects/Obstacle';
 import { ParallaxBackground } from '../objects/ParallaxBackground';
@@ -49,6 +50,11 @@ export class GameScene extends Phaser.Scene {
 
     // Audio
     private audioCtx: AudioContext | null = null;
+
+    // Ads – persists across scene restarts (Phaser reuses the same instance)
+    private deathCount: number = 0;
+    private adInitialized: boolean = false;
+    private adReady: boolean = false;
 
     constructor() {
         super({ key: 'GameScene' });
@@ -134,6 +140,7 @@ export class GameScene extends Phaser.Scene {
         });
 
         this.spawnObstacle();
+        void this.initAdMob();
     }
 
     update(_time: number, delta: number): void {
@@ -187,6 +194,33 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.updateMeter();
+    }
+
+    /** Initialises AdMob once per app session and preloads the first interstitial. */
+    private async initAdMob(): Promise<void> {
+        if (this.adInitialized) {
+            if (!this.adReady) void this.prepareAd();
+            return;
+        }
+        try {
+            await AdMob.initialize({ initializeForTesting: false });
+            this.adInitialized = true;
+            await this.prepareAd();
+        } catch {
+            // AdMob unavailable (browser / simulator) — silently skip
+        }
+    }
+
+    /** Preloads the next interstitial ad so it's ready to show instantly. */
+    private async prepareAd(): Promise<void> {
+        try {
+            await AdMob.prepareInterstitial({
+                adId: 'ca-app-pub-3366446717708247~6010209537', // ← replace before release
+            });
+            this.adReady = true;
+        } catch {
+            this.adReady = false;
+        }
     }
 
     /** Loads the persisted high score. Falls back to registry if Preferences unavailable (e.g. browser). */
@@ -450,7 +484,35 @@ export class GameScene extends Phaser.Scene {
         });
 
         this.spawnDeathBubbles();
-        this.time.delayedCall(800, () => { this.scene.start('GameOverScene'); });
+
+        this.deathCount++;
+        const showAd = this.adReady && this.deathCount % 3 === 0;
+
+        if (showAd) {
+            this.adReady = false;
+            this.time.delayedCall(800, () => {
+                void (async () => {
+                    // Cast needed: plugin v8 types are missing the Dismissed overload
+                    const handle = await AdMob.addListener(
+                        InterstitialAdPluginEvents.Dismissed as unknown as InterstitialAdPluginEvents.Showed,
+                        () => {
+                            void handle.remove();
+                            void this.prepareAd();
+                            this.scene.start('GameOverScene');
+                        },
+                    );
+                    try {
+                        await AdMob.showInterstitial();
+                    } catch {
+                        // Ad not available (no network, simulator, etc.) — fall through
+                        void handle.remove();
+                        this.scene.start('GameOverScene');
+                    }
+                })();
+            });
+        } else {
+            this.time.delayedCall(800, () => { this.scene.start('GameOverScene'); });
+        }
     }
 
     private spawnDeathBubbles(): void {
