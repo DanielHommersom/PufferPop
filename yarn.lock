@@ -60,6 +60,11 @@
   resolved "https://registry.npmjs.org/@capacitor/splash-screen/-/splash-screen-8.0.1.tgz"
   integrity sha512-c/ew/Z3eA7z8l06WoRAtzVF16VwYYrExmHmfGq1Cg675pVzaC/yuucB8/1xG1vhEfnW4fZ1KhSf/kzR1RiVYgg==
 
+"@capgo/capacitor-app-tracking-transparency@^8.1.5":
+  version "8.1.5"
+  resolved "https://registry.npmjs.org/@capgo/capacitor-app-tracking-transparency/-/capacitor-app-tracking-transparency-8.1.5.tgz"
+  integrity sha512-81+00i4fykwn6tqcRwGkV/t7YZu/NTVPnL5hz3IcitAkUQUsmaKGbmjq2dFPU7R690985Avq7duzlobFFxteiQ==
+
 "@esbuild/aix-ppc64@0.25.2":
   version "0.25.2"
   resolved "https://registry.yarnpkg.com/@esbuild/aix-ppc64/-/aix-ppc64-0.25.2.tgz#b87036f644f572efb2b3c75746c97d1d2d87ace8"

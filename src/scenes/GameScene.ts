@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { Preferences } from '@capacitor/preferences';
 import { AdMob, InterstitialAdPluginEvents } from '@capacitor-community/admob';
+import { AppTrackingTransparency } from '@capgo/capacitor-app-tracking-transparency';
+import { Capacitor } from '@capacitor/core';
 import { PufferFish } from '../objects/PufferFish';
 import { Obstacle } from '../objects/Obstacle';
 import { ParallaxBackground } from '../objects/ParallaxBackground';
@@ -203,6 +205,9 @@ export class GameScene extends Phaser.Scene {
             return;
         }
         try {
+            if (Capacitor.getPlatform() === 'ios') {
+                await AppTrackingTransparency.requestPermission();
+            }
             await AdMob.initialize({ initializeForTesting: false });
             this.adInitialized = true;
             await this.prepareAd();
