@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Share } from '@capacitor/share';
+import { Browser } from '@capacitor/browser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 
 /**
@@ -408,11 +408,8 @@ export class GameOverScene extends Phaser.Scene {
      */
     private async doShare(btn: Phaser.GameObjects.Container): Promise<void> {
         try {
-            await Share.share({
-                title: 'Puffer Pop',
-                text:  `I survived ${this.score} reefs in Puffer Pop! Can you beat me?`,
-                url:   'https://danielhommersom.github.io/PufferPop/',
-            });
+            const text = encodeURIComponent(`I survived ${this.score} reefs in Puffer Pop! Can you beat me? 🐡`);
+            await Browser.open({ url: `https://x.com/intent/tweet?text=${text}` });
         } catch {
             btn.setVisible(false);
         }
