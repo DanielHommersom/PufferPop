@@ -47,6 +47,10 @@ export class GameScene extends Phaser.Scene {
     // Input
     private spaceKey!: Phaser.Input.Keyboard.Key;
 
+    // Danger ring
+    private dangerRing!: Phaser.GameObjects.Graphics;
+    private dangerRingTween?: Phaser.Tweens.Tween;
+
     // Timer
     private spawnTimer: Phaser.Time.TimerEvent | null = null;
 
@@ -70,6 +74,9 @@ export class GameScene extends Phaser.Scene {
         this.add.image(0, 0, 'background').setOrigin(0, 0).setDepth(-10);
         this.parallax = new ParallaxBackground(this);
         this.fish = new PufferFish(this, 120, GAME_HEIGHT / 2);
+
+        this.dangerRing = this.add.graphics();
+        this.dangerRing.setDepth(5); // above background, below UI
 
         // ── Score display ──────────────────────────────────────────────────
         const scoreX = GAME_WIDTH / 2;
@@ -107,9 +114,9 @@ export class GameScene extends Phaser.Scene {
         }).catch(() => { /* registry fallback already set above */ });
 
         // ── Inflate meter ──────────────────────────────────────────────────
-        this.add.text(10, GAME_HEIGHT - 44, 'PUFF', {
-            fontFamily: pixelFont, fontSize: '8px', color: '#88aabb',
-        }).setDepth(20);
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 48, 'PUFF LEVEL', {
+            fontFamily: pixelFont, fontSize: '7px', color: '#88aabb',
+        }).setOrigin(0.5, 0).setDepth(10);
         this.meterGfx = this.add.graphics().setDepth(20);
 
         // ── Mute button (bottom-right) ─────────────────────────────────────
@@ -157,6 +164,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.fish.update();
+        this.updateDangerRing();
 
         const fishR = this.fish.getRadius();
         if (this.fish.y - fishR < 0 || this.fish.y + fishR > GAME_HEIGHT) {
@@ -290,22 +298,28 @@ export class GameScene extends Phaser.Scene {
     }
 
     private updateMeter(): void {
-        const BLOCK = 14;
-        const OUTLINE = 16;
-        const GAP = 3;
-        const startX = 10;
-        const blockY = GAME_HEIGHT - 26;
-        const filled = Math.round((this.fish.inflateLevel / FISH_MAX_INFLATE) * 8);
+        // 8 blocks × 16 px wide + 7 gaps × 4 px = 156 px total, centred
+        const BLOCK_W = 16;
+        const BLOCK_H = 14;
+        const GAP     = 4;
+        const startX  = Math.round(GAME_WIDTH / 2 - (8 * BLOCK_W + 7 * GAP) / 2);
+        const blockY  = GAME_HEIGHT - 32;
+        const filled  = Math.round((this.fish.inflateLevel / FISH_MAX_INFLATE) * 8);
+
         this.meterGfx.clear();
         for (let i = 0; i < 8; i++) {
-            const bx = startX + i * (BLOCK + GAP);
+            const bx = startX + i * (BLOCK_W + GAP);
+
+            // Black outline (1 px larger on each side)
             this.meterGfx.fillStyle(0x000000, 1);
-            this.meterGfx.fillRect(bx - 1, blockY - 1, OUTLINE, OUTLINE);
+            this.meterGfx.fillRect(bx - 1, blockY - 1, BLOCK_W + 2, BLOCK_H + 2);
+
+            // Block fill — colour changes by tier
             const color = i < filled
                 ? (i >= 6 ? 0xff2200 : i >= 4 ? 0xff8800 : 0x44cc44)
                 : 0x223344;
             this.meterGfx.fillStyle(color, 1);
-            this.meterGfx.fillRect(bx, blockY, BLOCK, BLOCK);
+            this.meterGfx.fillRect(bx, blockY, BLOCK_W, BLOCK_H);
         }
     }
 
@@ -462,6 +476,9 @@ export class GameScene extends Phaser.Scene {
         if (this.isGameOver) return;
         this.isGameOver = true;
 
+        this.dangerRingTween?.stop();
+        this.dangerRing.clear();
+
         this.spawnTimer?.remove();
         this.fish.deflate();
         this.playGameOverSound();
@@ -518,6 +535,96 @@ export class GameScene extends Phaser.Scene {
         } else {
             this.time.delayedCall(800, () => { this.scene.start('GameOverScene'); });
         }
+    }
+
+    // ── Danger ring ────────────────────────────────────────────────────────────
+
+    /**
+     * Redraws the danger ring around the fish every frame.
+     *
+     * Tier thresholds (based on inflateLevel / FISH_MAX_INFLATE):
+     *   < 0.35  — no ring (screen stays clean at low inflate)
+     *   0.35–0.60 — subtle white ring, no pulse
+     *   0.60–0.80 — orange ring, slow pulse (380 ms)
+     *   0.80–1.00 — red double ring, fast pulse (160 ms)
+     *
+     * The ring is redrawn at fish.x / fish.y each frame so it follows
+     * the fish exactly without a position tween.
+     * Pulse tweens are started lazily and stopped when the tier drops.
+     */
+    private updateDangerRing(): void {
+        this.dangerRing.clear();
+
+        const ratio = this.fish.inflateLevel / FISH_MAX_INFLATE;
+        if (ratio < 0.35) {
+            this.dangerRingTween?.stop();
+            this.dangerRing.setAlpha(1);
+            return;
+        }
+
+        const r = this.fish.getRadius();
+        const x = this.fish.x;
+        const y = this.fish.y;
+
+        if (ratio >= 0.80) {
+            // Outer ring — black shadow then red fill
+            this.dangerRing.lineStyle(6, 0x000000, 0.6);
+            this.dangerRing.strokeCircle(x, y, r + 10);
+            this.dangerRing.lineStyle(4, 0xff2200, 0.9);
+            this.dangerRing.strokeCircle(x, y, r + 10);
+
+            // Inner ring
+            this.dangerRing.lineStyle(4, 0x000000, 0.4);
+            this.dangerRing.strokeCircle(x, y, r + 5);
+            this.dangerRing.lineStyle(2, 0xff6600, 0.7);
+            this.dangerRing.strokeCircle(x, y, r + 5);
+
+            // Fast pulse — restart if not already running at this speed
+            if (!this.dangerRingTween || !this.dangerRingTween.isPlaying()) {
+                this.dangerRingTween = this.tweens.add({
+                    targets:  this.dangerRing,
+                    alpha:    { from: 1, to: 0.3 },
+                    duration: 160,
+                    yoyo:     true,
+                    repeat:   -1,
+                    ease:     'Sine.easeInOut',
+                });
+            }
+
+        } else if (ratio >= 0.60) {
+            // Orange warning ring
+            this.dangerRing.lineStyle(5, 0x000000, 0.5);
+            this.dangerRing.strokeCircle(x, y, r + 8);
+            this.dangerRing.lineStyle(3, 0xff8800, 0.8);
+            this.dangerRing.strokeCircle(x, y, r + 8);
+
+            // Slow pulse
+            if (!this.dangerRingTween || !this.dangerRingTween.isPlaying()) {
+                this.dangerRingTween = this.tweens.add({
+                    targets:  this.dangerRing,
+                    alpha:    { from: 1, to: 0.5 },
+                    duration: 380,
+                    yoyo:     true,
+                    repeat:   -1,
+                    ease:     'Sine.easeInOut',
+                });
+            }
+
+        } else {
+            // Subtle white ring (ratio 0.35–0.60)
+            this.dangerRingTween?.stop();
+            this.dangerRing.setAlpha(1);
+            this.dangerRing.lineStyle(3, 0x000000, 0.3);
+            this.dangerRing.strokeCircle(x, y, r + 6);
+            this.dangerRing.lineStyle(2, 0xffffff, 0.4);
+            this.dangerRing.strokeCircle(x, y, r + 6);
+        }
+    }
+
+    /** Clean up the danger ring on scene shutdown to prevent memory leaks. */
+    shutdown(): void {
+        this.dangerRingTween?.stop();
+        this.dangerRing?.destroy();
     }
 
     private spawnDeathBubbles(): void {
