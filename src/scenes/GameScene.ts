@@ -42,7 +42,7 @@ export class GameScene extends Phaser.Scene {
 
     // UI – mute button
     private muteGfx!: Phaser.GameObjects.Graphics;
-    private muted: boolean = localStorage.getItem('pufferpop_muted') === '1';
+    private muted: boolean = localStorage.getItem('pufferfishrun_muted') === '1';
 
     // Input
     private spaceKey!: Phaser.Input.Keyboard.Key;
@@ -131,7 +131,7 @@ export class GameScene extends Phaser.Scene {
         );
         this.muteGfx.on('pointerdown', () => {
             this.muted = !this.muted;
-            localStorage.setItem('pufferpop_muted', this.muted ? '1' : '0');
+            localStorage.setItem('pufferfishrun_muted', this.muted ? '1' : '0');
             this.drawMuteButton(muteCx, muteCy, muteR);
         });
 

@@ -1,6 +1,6 @@
 {
-    "name": "pufferpop",
-    "description": "PufferPop is a Phaser 3 game.",
+    "name": "pufferfishrun",
+    "description": "Pufferfish Run is a Phaser 3 game.",
     "version": "1.4.0",
     "author": "Digital Diamonds",
     "license": "MIT",
@@ -8,12 +8,12 @@
     "bugs": {
         "url": "https://github.com/phaserjs/template-vite-ts/issues"
     },
-    "scripts": {
-        "dev": "node log.js dev & vite --config vite/config.dev.mjs",
-        "build": "node log.js build & vite build --config vite/config.prod.mjs",
-        "dev-nolog": "vite --config vite/config.dev.mjs",
-        "build-nolog": "vite build --config vite/config.prod.mjs"
-    },
+"scripts": {
+  "dev": "vite --config vite/config.dev.mjs",
+  "build": "vite build --config vite/config.prod.mjs",
+  "dev-nolog": "vite --config vite/config.dev.mjs",
+  "build-nolog": "vite build --config vite/config.prod.mjs"
+},
     "devDependencies": {
         "@capacitor/cli": "^8.2.0",
         "typescript": "~5.7.2",

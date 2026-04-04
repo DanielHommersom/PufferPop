@@ -408,7 +408,7 @@ export class GameOverScene extends Phaser.Scene {
      */
     private async doShare(btn: Phaser.GameObjects.Container): Promise<void> {
         try {
-            const text = encodeURIComponent(`I survived ${this.score} reefs in Puffer Pop! Can you beat me? 🐡`);
+            const text = encodeURIComponent(`I survived ${this.score} reefs in Pufferfish Run! Can you beat me? 🐡`);
             await Browser.open({ url: `https://x.com/intent/tweet?text=${text}` });
         } catch {
             btn.setVisible(false);

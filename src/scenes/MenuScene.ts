@@ -365,7 +365,7 @@ export class MenuScene extends Phaser.Scene {
         const popY      = GAME_HEIGHT * 0.56;
         const pixelFont = '"Press Start 2P", monospace';
 
-        const puffer = this.add.text(cx, pufferY + 30, 'PUFFER', {
+        const puffer = this.add.text(cx, pufferY + 30, 'PUFFERFISH', {
             fontFamily: pixelFont,
             fontSize:   '42px',
             color:      '#ffffff',
@@ -373,7 +373,7 @@ export class MenuScene extends Phaser.Scene {
             strokeThickness: 8,
         }).setOrigin(0.5).setAlpha(0);
 
-        const pop = this.add.text(cx, popY + 30, 'POP', {
+        const pop = this.add.text(cx, popY + 30, 'RUN', {
             fontFamily: pixelFont,
             fontSize:   '58px',
             color:      '#f4a832',

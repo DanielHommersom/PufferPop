@@ -1,4 +1,4 @@
-# Puffer Pop 🐡
+# Pufferfish Run 🐡
 
 A mobile arcade game built with Phaser 3 and Capacitor.
 

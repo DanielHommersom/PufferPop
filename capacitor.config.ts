@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.pufferpop.app',
-  appName: 'Puffer Pop',
+  appId: 'com.pufferfishrun.app',
+  appName: 'Pufferfish Run',
   webDir: 'dist',
   plugins: {
     AdMob: {
