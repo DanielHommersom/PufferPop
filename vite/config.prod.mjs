@@ -1,47 +1,39 @@
 import { defineConfig } from 'vite';
 
-const phasermsg = () => {
-    return {
-        name: 'phasermsg',
-        buildStart() {
-            process.stdout.write(`Building for production...\n`);
-        },
-        buildEnd() {
-            const line = "---------------------------------------------------------";
-            const msg = `❤️❤️❤️ Tell us about your game! - games@phaser.io ❤️❤️❤️`;
-            process.stdout.write(`${line}\n${msg}\n${line}\n`);
-            
-            process.stdout.write(`✨ Done ✨\n`);
-        }
-    }
-}   
-
 export default defineConfig({
-    base: './',
-    logLevel: 'warning',
-    build: {
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    phaser: ['phaser']
-                }
-            }
+  base: './',
+  build: {
+    target: 'es2020',
+    outDir: 'dist',
+    emptyOutDir: true,
+    minify: 'terser',
+    sourcemap: false,
+    chunkSizeWarningLimit: 2000,
+
+    terserOptions: {
+      compress: {
+        passes: 2,
+        drop_console: true,
+        drop_debugger: true,
+        collapse_vars: true,
+        reduce_vars: true,
+      },
+      mangle: true,
+      format: {
+        comments: false,
+        ascii_only: true,
+      },
+    },
+
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          phaser: ['phaser'],
         },
-        minify: 'terser',
-        terserOptions: {
-            compress: {
-                passes: 2
-            },
-            mangle: true,
-            format: {
-                comments: false
-            }
-        }
+        chunkFileNames: 'assets/pfr-[hash].js',
+        entryFileNames: 'assets/pfr-[hash].js',
+        assetFileNames: 'assets/pfr-[hash].[ext]',
+      },
     },
-    server: {
-        port: 8080
-    },
-    plugins: [
-        phasermsg()
-    ]
+  },
 });

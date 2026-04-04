@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.pufferfishrun.app',
+  appId: 'com.digitaldiamonds.pufferfishrun.app',
   appName: 'Pufferfish Run',
   webDir: 'dist',
   plugins: {
