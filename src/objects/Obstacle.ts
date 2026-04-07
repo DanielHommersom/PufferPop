@@ -36,6 +36,10 @@ export class Obstacle extends Phaser.GameObjects.Graphics {
 
     private readonly gapSize: number;
 
+    /** Reused rect objects — mutated in place each frame to avoid allocation. */
+    private readonly _topRect:    ObstacleRect = { x: 0, y: 0, w: 0, h: 0 };
+    private readonly _bottomRect: ObstacleRect = { x: 0, y: 0, w: 0, h: 0 };
+
     constructor(scene: Phaser.Scene, x: number, gapY: number, gapSize: number = GAP_SIZE_MIN) {
         super(scene, { x, y: 0 });
         this.gapY    = gapY;
@@ -44,16 +48,20 @@ export class Obstacle extends Phaser.GameObjects.Graphics {
         this.drawColumns();
     }
 
-    /** Returns the collision rect for the top column (world-space). */
+    /** Returns the collision rect for the top column (world-space). Mutates a cached object — do not store the reference. */
     public getTopRect(): ObstacleRect {
-        const topHeight = this.gapY - this.gapSize / 2;
-        return { x: this.x, y: 0, w: Obstacle.COLUMN_WIDTH, h: topHeight };
+        this._topRect.x = this.x;
+        this._topRect.h = this.gapY - this.gapSize / 2;
+        return this._topRect;
     }
 
-    /** Returns the collision rect for the bottom column (world-space). */
+    /** Returns the collision rect for the bottom column (world-space). Mutates a cached object — do not store the reference. */
     public getBottomRect(): ObstacleRect {
         const bottomY = this.gapY + this.gapSize / 2;
-        return { x: this.x, y: bottomY, w: Obstacle.COLUMN_WIDTH, h: GAME_HEIGHT - bottomY };
+        this._bottomRect.x = this.x;
+        this._bottomRect.y = bottomY;
+        this._bottomRect.h = GAME_HEIGHT - bottomY;
+        return this._bottomRect;
     }
 
     // ── Drawing ───────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import { GameOverScene } from './scenes/GameOverScene';
 import { GAME_WIDTH, GAME_HEIGHT } from './constants';
 
 const config: Phaser.Types.Core.GameConfig = {
-    type: Phaser.AUTO,
+    type: Phaser.WEBGL,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
     backgroundColor: '#0a2a4a',

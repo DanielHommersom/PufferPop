@@ -163,7 +163,7 @@ export class GameScene extends Phaser.Scene {
             this.fish.deflate();
         }
 
-        this.fish.update();
+        this.fish.update(delta);
         this.updateDangerRing();
 
         const fishR = this.fish.getRadius();
@@ -172,7 +172,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        const speed = this.currentSpeed();
+        const speed = this.currentSpeed() * (delta / 16.667);
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
             const obs = this.obstacles[i];
             obs.x -= speed;

@@ -12,6 +12,12 @@ import {
     INFLATE_THRESHOLD_DANGER,
 } from '../constants';
 
+/** Spine directions — allocated once at module level, reused every frame. */
+const SPINE_DIRECTIONS: [number, number][] = [
+    [ 1,  0], [-1,  0], [ 0,  1], [ 0, -1],
+    [ 1,  1], [ 1, -1], [-1,  1], [-1, -1],
+];
+
 /**
  * PufferFish – the player-controlled character.
  * Extends Graphics and redraws itself every frame using the Flappy Bird
@@ -29,9 +35,9 @@ export class PufferFish extends Phaser.GameObjects.Graphics {
     public isInflating: boolean = false;
 
     // ── Blink state ───────────────────────────────────────────────────────────
-    /** Frames elapsed since last blink reset. */
+    /** Milliseconds elapsed since last blink reset. */
     private blinkTimer: number = 0;
-    /** True for 6 frames every 180-frame cycle. */
+    /** True for ~100 ms every ~3 s. */
     private isBlinking: boolean = false;
 
     // ── Tail wag state ────────────────────────────────────────────────────────
@@ -40,8 +46,16 @@ export class PufferFish extends Phaser.GameObjects.Graphics {
     /** Oscillation direction (+1 or -1). */
     private wagDirection: number = 1;
 
+    /** Belly colours pre-computed once — avoids Color object allocation every frame. */
+    private readonly bellySafe:    number;
+    private readonly bellyWarning: number;
+    private readonly bellyDanger:  number;
+
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, { x, y });
+        this.bellySafe    = Phaser.Display.Color.IntegerToColor(INFLATE_COLORS.safe).lighten(25).color;
+        this.bellyWarning = Phaser.Display.Color.IntegerToColor(INFLATE_COLORS.warning).lighten(25).color;
+        this.bellyDanger  = Phaser.Display.Color.IntegerToColor(INFLATE_COLORS.danger).lighten(25).color;
         scene.add.existing(this);
     }
 
@@ -56,32 +70,35 @@ export class PufferFish extends Phaser.GameObjects.Graphics {
     }
 
     /**
-     * Main per-frame update.
-     * Advances physics, blink and wag timers, then redraws.
+     * Main per-frame update. All physics and timers are scaled by delta so
+     * behaviour is identical regardless of frame rate.
+     * @param delta Frame time in milliseconds from Phaser's update callback.
      */
-    public update(): void {
+    public update(delta: number): void {
+        const s = delta / 16.667; // 1.0 at 60 fps, 2.0 at 30 fps, 0.5 at 120 fps
+
         // ── Physics ───────────────────────────────────────────────────────────
         if (this.isInflating) {
-            this.inflateLevel = Math.min(FISH_MAX_INFLATE, this.inflateLevel + INFLATE_SPEED);
-            this.velY -= INFLATE_SPEED;
+            this.inflateLevel = Math.min(FISH_MAX_INFLATE, this.inflateLevel + INFLATE_SPEED * s);
+            this.velY -= INFLATE_SPEED * s;
         } else {
-            this.inflateLevel = Math.max(0, this.inflateLevel - DEFLATE_SPEED);
-            this.velY += GRAVITY;
+            this.inflateLevel = Math.max(0, this.inflateLevel - DEFLATE_SPEED * s);
+            this.velY += GRAVITY * s;
         }
 
         this.velY = Phaser.Math.Clamp(this.velY, MAX_VEL_UP, MAX_VEL_DOWN);
-        this.y += this.velY;
+        this.y += this.velY * s;
 
-        // ── Blink timer ───────────────────────────────────────────────────────
-        this.blinkTimer++;
-        if (this.blinkTimer >= 180) this.isBlinking = true;
-        if (this.blinkTimer >= 186) {
+        // ── Blink timer (ms-based, frame-rate independent) ────────────────────
+        this.blinkTimer += delta;
+        if (this.blinkTimer >= 3000) this.isBlinking = true;
+        if (this.blinkTimer >= 3100) {
             this.isBlinking = false;
             this.blinkTimer = 0;
         }
 
         // ── Tail wag ──────────────────────────────────────────────────────────
-        this.wagOffset += 0.15 * this.wagDirection;
+        this.wagOffset += 0.15 * s * this.wagDirection;
         if (Math.abs(this.wagOffset) > 2) this.wagDirection *= -1;
 
         this.draw();
@@ -129,8 +146,10 @@ export class PufferFish extends Phaser.GameObjects.Graphics {
         this.fillStyle(bodyColor, 1);
         this.fillEllipse(0, 0, r * 2.2, r * 1.9);
 
-        // Belly – lighter underside
-        const bellyColor = Phaser.Display.Color.IntegerToColor(bodyColor).lighten(25).color;
+        // Belly – lighter underside (pre-cached, no allocation)
+        const bellyColor = this.inflateLevel >= INFLATE_THRESHOLD_DANGER  ? this.bellyDanger
+            : this.inflateLevel >= INFLATE_THRESHOLD_WARNING ? this.bellyWarning
+            : this.bellySafe;
         this.fillStyle(bellyColor, 1);
         this.fillEllipse(r * 0.1, r * 0.3, r * 1.1, r * 0.7);
 
@@ -250,12 +269,7 @@ export class PufferFish extends Phaser.GameObjects.Graphics {
         const spineH  = 6 + t * 8;     // 6 → 14 px
         const halfW   = 3;             // half of 6 px base
 
-        const directions: [number, number][] = [
-            [ 1,  0], [-1,  0], [ 0,  1], [ 0, -1],
-            [ 1,  1], [ 1, -1], [-1,  1], [-1, -1],
-        ];
-
-        for (const [nx, ny] of directions) {
+        for (const [nx, ny] of SPINE_DIRECTIONS) {
             const len = Math.sqrt(nx * nx + ny * ny);
             const ux  = nx / len;   // unit outward direction
             const uy  = ny / len;
