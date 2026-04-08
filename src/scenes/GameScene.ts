@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core';
 import { PufferFish } from '../objects/PufferFish';
 import { Obstacle } from '../objects/Obstacle';
 import { ParallaxBackground } from '../objects/ParallaxBackground';
+import { Enemy, EnemyType } from '../objects/Enemy';
 import {
     GAME_WIDTH,
     GAME_HEIGHT,
@@ -19,6 +20,11 @@ import {
     DIFFICULTY_RAMP_SPEED,
     DIFFICULTY_RAMP_SPAWN,
     FISH_MAX_INFLATE,
+    ENEMY_JELLYFISH_MIN_SCORE,
+    ENEMY_SHARK_MIN_SCORE,
+    ENEMY_URCHIN_MIN_SCORE,
+    ENEMY_SPAWN_INTERVAL,
+    ENEMY_SPAWN_CHANCE,
 } from '../constants';
 
 export class GameScene extends Phaser.Scene {
@@ -53,6 +59,10 @@ export class GameScene extends Phaser.Scene {
 
     // Timer
     private spawnTimer: Phaser.Time.TimerEvent | null = null;
+
+    // Enemies
+    private enemies: Enemy[] = [];
+    private enemySpawnTimer!: Phaser.Time.TimerEvent;
 
     // Audio
     private audioCtx: AudioContext | null = null;
@@ -148,7 +158,14 @@ export class GameScene extends Phaser.Scene {
             if (!this.isGameOver) this.fish.deflate();
         });
 
+        this.enemies = [];
         this.spawnObstacle();
+        this.enemySpawnTimer = this.time.addEvent({
+            delay: ENEMY_SPAWN_INTERVAL,
+            callback: this.spawnEnemy,
+            callbackScope: this,
+            loop: true,
+        });
         void this.initAdMob();
     }
 
@@ -200,6 +217,26 @@ export class GameScene extends Phaser.Scene {
             if (obs.x < -80) {
                 obs.destroy();
                 this.obstacles.splice(i, 1);
+            }
+        }
+
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            enemy.update();
+
+            const dx = this.fish.x - enemy.x;
+            const dy = this.fish.y - enemy.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const minDist = this.fish.getRadius() + enemy.getRadius() - 4;
+
+            if (dist < minDist) {
+                void this.triggerGameOver();
+                return;
+            }
+
+            if (enemy.isDead) {
+                enemy.destroy();
+                this.enemies.splice(i, 1);
             }
         }
 
@@ -269,6 +306,21 @@ export class GameScene extends Phaser.Scene {
         );
         this.obstacles.push(new Obstacle(this, GAME_WIDTH + 10, gapY, gap));
         this.spawnTimer = this.time.delayedCall(this.currentSpawnInterval(), this.spawnObstacle, [], this);
+    }
+
+    private spawnEnemy(): void {
+        if (this.isGameOver) return;
+
+        const available: EnemyType[] = [];
+        if (this.score >= ENEMY_JELLYFISH_MIN_SCORE) available.push(0);
+        if (this.score >= ENEMY_SHARK_MIN_SCORE)     available.push(1);
+        if (this.score >= ENEMY_URCHIN_MIN_SCORE)    available.push(2);
+
+        if (available.length === 0) return;
+        if (Math.random() > ENEMY_SPAWN_CHANCE) return;
+
+        const type = available[Phaser.Math.Between(0, available.length - 1)] as EnemyType;
+        this.enemies.push(new Enemy(this, type));
     }
 
     private currentSpawnInterval(): number {
@@ -480,6 +532,9 @@ export class GameScene extends Phaser.Scene {
         this.dangerRing.clear();
 
         this.spawnTimer?.remove();
+        this.enemySpawnTimer?.remove();
+        this.enemies.forEach(e => e.destroy());
+        this.enemies = [];
         this.fish.deflate();
         this.playGameOverSound();
 
@@ -621,10 +676,12 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    /** Clean up the danger ring on scene shutdown to prevent memory leaks. */
+    /** Clean up the danger ring and enemies on scene shutdown to prevent memory leaks. */
     shutdown(): void {
         this.dangerRingTween?.stop();
         this.dangerRing?.destroy();
+        this.enemies.forEach(e => e.destroy());
+        this.enemies = [];
     }
 
     private spawnDeathBubbles(): void {

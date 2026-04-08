@@ -65,3 +65,20 @@ export const INFLATE_COLORS: { safe: number; warning: number; danger: number } =
 export const CORAL_BASE_COLOR = 0x1e7a3c;
 export const CORAL_HIGHLIGHT_COLOR = 0x28a050;
 export const CORAL_SPINE_COLOR = 0x8b2020;
+
+// ── Enemies ───────────────────────────────────────────────────────────────────
+
+/** Score at which jellyfish enemies start spawning */
+export const ENEMY_JELLYFISH_MIN_SCORE = 1;
+
+/** Score at which shark enemies start spawning */
+export const ENEMY_SHARK_MIN_SCORE = 5;
+
+/** Score at which urchin enemies start spawning */
+export const ENEMY_URCHIN_MIN_SCORE = 15;
+
+/** Interval in ms between enemy spawn attempts */
+export const ENEMY_SPAWN_INTERVAL = 3200;
+
+/** Chance per spawn attempt that an enemy appears (0–1) */
+export const ENEMY_SPAWN_CHANCE = 0.45;
