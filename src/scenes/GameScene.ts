@@ -167,6 +167,8 @@ export class GameScene extends Phaser.Scene {
             loop: true,
         });
         void this.initAdMob();
+        // Load the selected skin — fish renders with default until this resolves
+        void this.fish.loadSkin();
     }
 
     update(_time: number, delta: number): void {

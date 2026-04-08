@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { Browser } from '@capacitor/browser';
+import { Preferences } from '@capacitor/preferences';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
+import { SKINS, SkinRenderer } from '../objects/SkinRenderer';
 
 /**
  * GameOverScene – ocean-themed game-over screen.
@@ -35,10 +37,31 @@ export class GameOverScene extends Phaser.Scene {
 
         this.drawBackground();
         this.createGameOverTitle();
+        this.createSkinFishPreview();
         this.createScorePanel(highScore, isNewRecord);
         this.createRetryButton();
         this.createShareButton();
         this.spawnDebrisBubbles();
+    }
+
+    /**
+     * Draws a small fish using the player's selected skin above the score panel.
+     * Loads the selected skin from Preferences asynchronously; renders the
+     * default skin immediately and swaps once the preference resolves.
+     */
+    private createSkinFishPreview(): void {
+        const fishGfx = this.add.graphics({ x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.31 });
+        SkinRenderer.draw(fishGfx, SKINS[0], 28, 0);
+
+        void (async () => {
+            try {
+                const { value } = await Preferences.get({ key: 'selectedSkin' });
+                const skin = SKINS.find(s => s.id === value) ?? SKINS[0];
+                SkinRenderer.draw(fishGfx, skin, 28, 0);
+            } catch {
+                // Keep the default skin already drawn
+            }
+        })();
     }
 
     /** Kill all tweens on scene shutdown to prevent memory leaks. */

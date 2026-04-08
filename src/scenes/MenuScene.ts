@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
+import { Preferences } from '@capacitor/preferences';
 import { GAME_WIDTH, GAME_HEIGHT, INFLATE_COLORS } from '../constants';
+import { SKINS, SkinRenderer } from '../objects/SkinRenderer';
+import type { SkinDefinition } from '../objects/SkinRenderer';
 
 /**
  * MenuScene – ocean-themed main menu with animated pufferfish, title treatment,
@@ -20,12 +23,6 @@ import { GAME_WIDTH, GAME_HEIGHT, INFLATE_COLORS } from '../constants';
 export class MenuScene extends Phaser.Scene {
     /** Main fish body graphics – receives bob and breathe tweens. */
     private fishGfx!: Phaser.GameObjects.Graphics;
-    /** Separate eye graphics so scaleY can be tweened for blinking. */
-    private eyeGfx!: Phaser.GameObjects.Graphics;
-    /** Frames elapsed since last blink reset. */
-    private blinkCounter: number = 0;
-    /** Guards against starting a new blink while one is running. */
-    private blinking: boolean = false;
     /** Live bubble Graphics objects (positions updated in update()). */
     private bubbles: Phaser.GameObjects.Graphics[] = [];
     /** Baseline x positions for sinusoidal bubble wobble. */
@@ -44,50 +41,41 @@ export class MenuScene extends Phaser.Scene {
     preload(): void { /* font provided by @font-face in index.html */ }
 
     /** Build all menu layers, animations, and input bindings. */
-    create(): void {
+    async create(): Promise<void> {
         // Reset ephemeral state so the scene is clean on restart.
-        this.bubbles      = [];
-        this.bubbleBaseX  = [];
-        this.bubblePhase  = [];
-        this.blinkCounter = 0;
-        this.blinking     = false;
+        this.bubbles     = [];
+        this.bubbleBaseX = [];
+        this.bubblePhase = [];
+
+        // Load selected skin before drawing the preview fish
+        const savedId = await this.loadSelectedSkin();
+        const skin    = SKINS.find(s => s.id === savedId) ?? SKINS[0];
 
         this.drawBackground();
         this.createCoralDecor();
         this.createBubbles();
-        this.createMenuFish();
+        this.createMenuFish(skin);
         this.createTitle();
         this.createTutorialPanel();
         this.createTapButton();
+        this.createSelectSkinButton();
+
+        // Refresh fish preview when returning from SkinSelectScene
+        this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
     }
 
-    /** Per-frame: bubble x-wobble and eye-blink timer. */
+    /** Per-frame: bubble x-wobble. */
     update(): void {
         const t = this.time.now * 0.001;
         for (let i = 0; i < this.bubbles.length; i++) {
             this.bubbles[i].x = this.bubbleBaseX[i] + Math.sin(t + this.bubblePhase[i]) * 15;
-        }
-
-        this.blinkCounter++;
-        if (this.blinkCounter >= 200 && !this.blinking) {
-            this.blinking = true;
-            this.tweens.add({
-                targets:  this.eyeGfx,
-                scaleY:   0.1,
-                duration: 60,
-                ease:     'Sine.easeIn',
-                yoyo:     true,
-                onComplete: () => {
-                    this.blinking     = false;
-                    this.blinkCounter = 0;
-                },
-            });
         }
     }
 
     /** Kill all tweens on scene shutdown to prevent memory leaks. */
     shutdown(): void {
         this.tweens.killAll();
+        this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
     }
 
     // ── Background ─────────────────────────────────────────────────────────────
@@ -219,25 +207,23 @@ export class MenuScene extends Phaser.Scene {
     // ── Menu fish ──────────────────────────────────────────────────────────────
 
     /**
-     * Creates the animated pufferfish and attaches bob, breathe, and blink tweens.
-     * The fish body and eye are separate Graphics objects so the eye scaleY
-     * can be tweened independently for the blink effect.
+     * Creates the animated pufferfish preview using the supplied skin.
+     * Attaches bob and breathe tweens. SkinRenderer draws everything into a
+     * single Graphics object so there is no separate eye layer.
+     *
+     * @param skin Active skin to render on the preview fish.
      */
-    private createMenuFish(): void {
+    private createMenuFish(skin: SkinDefinition): void {
         const cx = GAME_WIDTH / 2;
         const cy = GAME_HEIGHT * 0.28;
         const r  = 52;
 
         this.fishGfx = this.add.graphics({ x: cx, y: cy });
-        this.drawStaticFishBody(this.fishGfx, r);
+        SkinRenderer.draw(this.fishGfx, skin, r, 8);
 
-        // Eye positioned at the fish's eye offset in world space
-        this.eyeGfx = this.add.graphics({ x: cx + r * 0.5, y: cy - r * 0.25 });
-        this.drawEye(this.eyeGfx, r);
-
-        // Bob: fish + eye move together to stay in sync
+        // Bob
         this.tweens.add({
-            targets:  [this.fishGfx, this.eyeGfx],
+            targets:  this.fishGfx,
             y:        '+=14',
             yoyo:     true,
             duration: 1100,
@@ -245,7 +231,7 @@ export class MenuScene extends Phaser.Scene {
             repeat:   -1,
         });
 
-        // Breathe: body squishes slightly; eye floats at its own size
+        // Breathe
         this.tweens.add({
             targets:  this.fishGfx,
             scaleX:   1.06,
@@ -257,99 +243,12 @@ export class MenuScene extends Phaser.Scene {
         });
     }
 
-    /**
-     * Draws the fish body (tail + ellipse + belly + specular + spines)
-     * centered at (0, 0) of the given Graphics object.
-     * Matches the inflate-level style from PufferFish.ts (fully inflated look).
-     *
-     * @param gfx Target Graphics to draw into.
-     * @param r   Body radius in pixels.
-     */
-    private drawStaticFishBody(gfx: Phaser.GameObjects.Graphics, r: number): void {
-        const tailBaseX = -(r * 1.05);
-        const tailHalfH = r * 0.55;
-        const tailDepth = r * 0.55;
-
-        // Tail – outline then dark-orange fill
-        gfx.fillStyle(0x000000, 1);
-        gfx.fillTriangle(
-            tailBaseX + 3, -tailHalfH - 3,
-            tailBaseX + 3,  tailHalfH + 3,
-            tailBaseX - tailDepth - 3, 0,
-        );
-        gfx.fillStyle(0xf4921a, 1);
-        gfx.fillTriangle(
-            tailBaseX, -tailHalfH,
-            tailBaseX,  tailHalfH,
-            tailBaseX - tailDepth, 0,
-        );
-
-        // Body outline
-        gfx.fillStyle(0x000000, 1);
-        gfx.fillCircle(0, 0, r + 3);
-        // Body fill
-        gfx.fillStyle(INFLATE_COLORS.safe, 1);
-        gfx.fillEllipse(0, 0, r * 2.2, r * 1.9);
-        // Belly highlight
-        const belly = Phaser.Display.Color.IntegerToColor(INFLATE_COLORS.safe).lighten(25).color;
-        gfx.fillStyle(belly, 1);
-        gfx.fillEllipse(r * 0.1, r * 0.3, r * 1.1, r * 0.7);
-        // Specular
-        gfx.fillStyle(0xffffff, 0.60);
-        gfx.fillEllipse(-r * 0.25, -r * 0.35, r * 0.7, r * 0.45);
-
-        // Spines – 8 directions, outline trick
-        const spineH = 10;
-        const halfW  = 3;
-        const dirs: [number, number][] = [
-            [ 1,  0], [-1,  0], [ 0,  1], [ 0, -1],
-            [ 1,  1], [ 1, -1], [-1,  1], [-1, -1],
-        ];
-        for (const [nx, ny] of dirs) {
-            const len = Math.sqrt(nx * nx + ny * ny);
-            const ux  = nx / len;
-            const uy  = ny / len;
-            const px  = -uy;
-            const py  =  ux;
-            const bx  = ux * r * 1.05;
-            const by  = uy * r * 1.05;
-            const tx  = ux * (r * 1.05 + spineH);
-            const ty  = uy * (r * 1.05 + spineH);
-
-            gfx.fillStyle(0x000000, 1);
-            gfx.fillTriangle(
-                bx + px * (halfW + 2), by + py * (halfW + 2),
-                bx - px * (halfW + 2), by - py * (halfW + 2),
-                tx + ux * 2,           ty + uy * 2,
-            );
-            gfx.fillStyle(0xffffff, 1);
-            gfx.fillTriangle(
-                bx + px * halfW, by + py * halfW,
-                bx - px * halfW, by - py * halfW,
-                tx, ty,
-            );
-        }
-    }
-
-    /**
-     * Draws a full cartoon eye centered at (0, 0) of the given Graphics object.
-     * Layers: black outline → white sclera → blue iris → dark pupil → specular dot.
-     *
-     * @param gfx Target eye Graphics (positioned at the eye's world location).
-     * @param r   Fish body radius used to derive proportional sizes.
-     */
-    private drawEye(gfx: Phaser.GameObjects.Graphics, r: number): void {
-        const eyeR = r * 0.32;
-        gfx.fillStyle(0x000000, 1);
-        gfx.fillCircle(0, 0, eyeR + 3);
-        gfx.fillStyle(0xffffff, 1);
-        gfx.fillCircle(0, 0, eyeR);
-        gfx.fillStyle(0x4a90d9, 1);
-        gfx.fillCircle(r * 0.04, r * 0.03, eyeR * 0.55);
-        gfx.fillStyle(0x000000, 1);
-        gfx.fillCircle(r * 0.07, r * 0.05, eyeR * 0.34);
-        gfx.fillStyle(0xffffff, 1);
-        gfx.fillCircle(r * 0.02, -r * 0.01, Math.max(2, eyeR * 0.19));
+    /** Redraws the menu fish preview after returning from SkinSelectScene. */
+    private onResume(): void {
+        void this.loadSelectedSkin().then(savedId => {
+            const skin = SKINS.find(s => s.id === savedId) ?? SKINS[0];
+            SkinRenderer.draw(this.fishGfx, skin, 52, 8);
+        });
     }
 
     // ── Title ──────────────────────────────────────────────────────────────────
@@ -490,8 +389,12 @@ export class MenuScene extends Phaser.Scene {
             duration: 700, ease: 'Sine.easeInOut', yoyo: true, repeat: -1,
         });
 
-        // Any tap: brief squish → start game
-        this.input.once('pointerdown', () => {
+        // Tap on button: brief squish → start game
+        cont.setInteractive(
+            new Phaser.Geom.Rectangle(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H),
+            Phaser.Geom.Rectangle.Contains,
+        );
+        cont.once('pointerdown', () => {
             this.tweens.killAll();
             this.tweens.add({
                 targets: cont, scaleX: 0.94, scaleY: 0.94,
@@ -502,7 +405,64 @@ export class MenuScene extends Phaser.Scene {
         this.input.keyboard?.once('keydown-SPACE', () => this.startGame());
     }
 
+    // ── Select-skin button ─────────────────────────────────────────────────────
+
+    /** Creates the "SELECT SKIN" button that launches the skin selector overlay. */
+    private createSelectSkinButton(): void {
+        const cx      = GAME_WIDTH / 2;
+        const BTN_W   = 220;
+        const BTN_H   = 52;
+        const btnMidY = GAME_HEIGHT * 0.86 + BTN_H / 2;
+        const pixelFont = '"Press Start 2P", monospace';
+
+        const cont = this.add.container(cx, btnMidY);
+        const gfx  = this.add.graphics();
+        cont.add(gfx);
+
+        // Drop shadow
+        gfx.fillStyle(0x000000, 1);
+        gfx.fillRoundedRect(-BTN_W / 2 + 4, -BTN_H / 2 + 4, BTN_W, BTN_H, 14);
+        // Outline
+        gfx.fillStyle(0x000000, 1);
+        gfx.fillRoundedRect(-BTN_W / 2 - 3, -BTN_H / 2 - 3, BTN_W + 6, BTN_H + 6, 15);
+        // Fill
+        gfx.fillStyle(0x1a4a6a, 1);
+        gfx.fillRoundedRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, 12);
+        // Highlight
+        gfx.fillStyle(0x2a6a9a, 0.5);
+        gfx.fillRoundedRect(-BTN_W / 2, -BTN_H / 2, BTN_W, 16, 12);
+
+        cont.add(this.add.text(0, 0, 'SELECT SKIN', {
+            fontFamily: pixelFont, fontSize: '10px', color: '#ffffff',
+        }).setOrigin(0.5));
+
+        cont.setInteractive(
+            new Phaser.Geom.Rectangle(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H),
+            Phaser.Geom.Rectangle.Contains,
+        );
+        cont.on('pointerdown', () => {
+            this.tweens.add({
+                targets: cont, scaleX: 0.94, scaleY: 0.94,
+                duration: 80, yoyo: true,
+                onComplete: () => {
+                    this.scene.pause();
+                    this.scene.launch('SkinSelectScene');
+                },
+            });
+        });
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /** Loads the persisted selected skin id, falling back to 'default'. */
+    private async loadSelectedSkin(): Promise<string> {
+        try {
+            const { value } = await Preferences.get({ key: 'selectedSkin' });
+            return value ?? 'default';
+        } catch {
+            return 'default';
+        }
+    }
 
     /**
      * Triggers the scene transition with a white camera flash.
