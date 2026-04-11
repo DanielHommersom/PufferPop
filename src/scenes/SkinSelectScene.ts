@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Preferences } from '@capacitor/preferences';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { SKINS, SkinRenderer } from '../objects/SkinRenderer';
+import type { SkinDefinition } from '../objects/SkinRenderer';
 
 const CARD_W   = 64;
 const CARD_H   = 100;
@@ -22,8 +23,11 @@ export class SkinSelectScene extends Phaser.Scene {
     private skinCards: Phaser.GameObjects.Graphics[] = [];
     private skinGraphics: Phaser.GameObjects.Graphics[] = [];
     private lockIcons: Phaser.GameObjects.Text[] = [];
+    private cardLabels: Phaser.GameObjects.Text[] = [];
+    private cardProgressBars: Phaser.GameObjects.Graphics[] = [];
     private nameText!: Phaser.GameObjects.Text;
     private unlockText!: Phaser.GameObjects.Text;
+    private unlockSubText!: Phaser.GameObjects.Text;
     private selectBtn!: Phaser.GameObjects.Graphics;
     private selectBtnText!: Phaser.GameObjects.Text;
     private selectBtnCont!: Phaser.GameObjects.Container;
@@ -75,9 +79,11 @@ export class SkinSelectScene extends Phaser.Scene {
         const cardsStartX = -totalCardsW / 2;
         const cardsTopY   = panelTop + 82;
 
-        this.skinCards   = [];
-        this.skinGraphics = [];
-        this.lockIcons   = [];
+        this.skinCards        = [];
+        this.skinGraphics     = [];
+        this.lockIcons        = [];
+        this.cardLabels       = [];
+        this.cardProgressBars = [];
 
         for (let i = 0; i < SKINS.length; i++) {
             const skin   = SKINS[i];
@@ -129,13 +135,36 @@ export class SkinSelectScene extends Phaser.Scene {
                 panelCont.add(dummy);
                 this.lockIcons.push(dummy);
             }
+
+            // Score label — added after overlay so it renders on top
+            const labelStr = skin.unlockScore === 0 ? 'FREE' : String(skin.unlockScore);
+            const label = this.add.text(
+                cardX + 40,
+                cardsTopY + CARD_H,
+                labelStr,
+                {
+                    fontFamily: '"Press Start 2P", monospace',
+                    fontSize:   '6px',
+                    color:      locked ? '#ff8800' : '#44cc44',
+                },
+            ).setOrigin(0.5, 1).setAlpha(locked ? 0.9 : 0.8);
+            panelCont.add(label);
+            this.cardLabels.push(label);
+
+            // Progress bar — also above the overlay
+            const progressBar = this.add.graphics();
+            this.drawProgressBar(progressBar, cardX, cardsTopY, skin);
+            panelCont.add(progressBar);
+            this.cardProgressBars.push(progressBar);
         }
 
         const cardsBottom = cardsTopY + CARD_H;
 
         // ── Name & unlock labels ──────────────────────────────────────────────
-        this.nameText   = addText(0, cardsBottom + 22, '', '11px', '#ffffff');
-        this.unlockText = addText(0, cardsBottom + 42, '', '8px', '#44cc44');
+        this.nameText      = addText(0, cardsBottom + 22, '', '11px', '#ffffff');
+        this.unlockText    = addText(0, cardsBottom + 42, '', '8px', '#44cc44');
+        this.unlockSubText = addText(0, cardsBottom + 56, '', '7px', '#88aabb');
+        this.unlockSubText.setVisible(false);
 
         // ── SELECT button ─────────────────────────────────────────────────────
         const selectBtnCY = cardsBottom + 80;
@@ -243,8 +272,10 @@ export class SkinSelectScene extends Phaser.Scene {
 
         if (unlocked) {
             this.unlockText.setText('UNLOCKED').setColor('#44cc44');
+            this.unlockSubText.setVisible(false);
         } else {
-            this.unlockText.setText(`REACH SCORE ${skin.unlockScore}`).setColor('#ff8800');
+            this.unlockText.setText(`SCORE ${skin.unlockScore} TO UNLOCK`).setColor('#ff8800');
+            this.unlockSubText.setText(`YOUR BEST: ${this.highScore}`).setVisible(true);
         }
 
         // Redraw SELECT button with appropriate colour
@@ -289,6 +320,48 @@ export class SkinSelectScene extends Phaser.Scene {
                 this.scene.resume('MenuScene');
             },
         });
+    }
+
+    /**
+     * Draws a thin 3px progress bar at the bottom of a skin card showing
+     * how close the player is to unlocking the skin.
+     * Fully green for unlocked skins; orange fill proportional to
+     * highScore / unlockScore for locked skins.
+     *
+     * @param gfx   Target Graphics object to draw into.
+     * @param cardX Local x of the card's left edge within the panel container.
+     * @param cardY Local y of the card's top edge within the panel container.
+     * @param skin  Skin definition used to determine unlock threshold.
+     */
+    private drawProgressBar(
+        gfx:   Phaser.GameObjects.Graphics,
+        cardX: number,
+        cardY: number,
+        skin:  SkinDefinition,
+    ): void {
+        gfx.clear();
+
+        const barX = cardX + 3;
+        const barY = cardY + 107;
+        const barW = 74;
+        const barH = 3;
+
+        // Track
+        gfx.fillStyle(0x000000, 1);
+        gfx.fillRect(barX, barY, barW, barH);
+
+        const unlocked = skin.unlockScore <= this.highScore;
+        if (unlocked) {
+            gfx.fillStyle(0x44cc44, 1);
+            gfx.fillRect(barX, barY, barW, barH);
+        } else if (skin.unlockScore > 0) {
+            const progress = Math.min(this.highScore / skin.unlockScore, 1);
+            const fillW    = Math.round(barW * progress);
+            if (fillW > 0) {
+                gfx.fillStyle(0xff8800, 1);
+                gfx.fillRect(barX, barY, fillW, barH);
+            }
+        }
     }
 
     /** Loads the persisted high score, falling back to 0. */
