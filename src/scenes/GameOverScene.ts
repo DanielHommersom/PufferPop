@@ -19,6 +19,9 @@ export class GameOverScene extends Phaser.Scene {
     /** The score achieved in the last game run. */
     private score: number = 0;
 
+    private menuBtn!: Phaser.GameObjects.Container;
+    private retryBtn!: Phaser.GameObjects.Container;
+
     constructor() {
         super({ key: 'GameOverScene' });
     }
@@ -40,6 +43,7 @@ export class GameOverScene extends Phaser.Scene {
         this.createSkinFishPreview();
         this.createScorePanel(highScore, isNewRecord);
         this.createRetryButton();
+        this.createMenuButton();
         this.createShareButton();
         this.spawnDebrisBubbles();
     }
@@ -324,6 +328,8 @@ export class GameOverScene extends Phaser.Scene {
      * Creates the green "PLAY AGAIN" button inside a Container.
      * It bounces up from below (y+40, alpha 0) with a 900 ms delay.
      * The hit area is registered after the entrance completes (1400 ms).
+     * Uses an explicit pointerdown handler so tapping MAIN MENU or SHARE
+     * cannot accidentally trigger a retry.
      */
     private createRetryButton(): void {
         const cx      = GAME_WIDTH / 2;
@@ -332,10 +338,10 @@ export class GameOverScene extends Phaser.Scene {
         const targetY = GAME_HEIGHT * 0.72 + BTN_H / 2;
         const pixelFont = '"Press Start 2P", monospace';
 
-        const cont = this.add.container(cx, targetY + 40).setAlpha(0);
+        this.retryBtn = this.add.container(cx, targetY + 40).setAlpha(0);
 
         const gfx = this.add.graphics();
-        cont.add(gfx);
+        this.retryBtn.add(gfx);
 
         // Drop shadow
         gfx.fillStyle(0x000000, 1);
@@ -350,24 +356,109 @@ export class GameOverScene extends Phaser.Scene {
         gfx.fillStyle(0x77ee77, 0.5);
         gfx.fillRoundedRect(-BTN_W / 2, -BTN_H / 2, BTN_W, 20, 14);
 
-        cont.add(this.add.text(0, 0, 'PLAY AGAIN', {
+        this.retryBtn.add(this.add.text(0, 0, 'PLAY AGAIN', {
             fontFamily: pixelFont, fontSize: '14px', color: '#000000',
         }).setOrigin(0.5));
 
         // Bounce entrance
         this.tweens.add({
-            targets: cont, y: targetY, alpha: 1,
+            targets: this.retryBtn, y: targetY, alpha: 1,
             duration: 500, delay: 900, ease: 'Back.easeOut',
         });
 
         // Register hit area after animation completes
         this.time.delayedCall(1400, () => {
-            cont.setInteractive(
+            this.retryBtn.setInteractive(
                 new Phaser.Geom.Rectangle(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H),
                 Phaser.Geom.Rectangle.Contains,
             );
-            cont.once('pointerdown', () => this.scene.start('GameScene'));
-            this.input.keyboard?.once('keydown-SPACE', () => this.scene.start('GameScene'));
+            this.retryBtn.once('pointerdown', () => {
+                this.tweens.add({
+                    targets: this.retryBtn, scaleX: 0.94, scaleY: 0.94,
+                    duration: 80, yoyo: true, ease: 'Sine.easeInOut',
+                    onComplete: () => {
+                        this.tweens.killAll();
+                        this.scene.start('GameScene');
+                    },
+                });
+            });
+            this.input.keyboard?.once('keydown-SPACE', () => {
+                this.tweens.killAll();
+                this.scene.start('GameScene');
+            });
+        });
+    }
+
+    // ── Main menu button ───────────────────────────────────────────────────────
+
+    /**
+     * Creates the dark-blue "MAIN MENU" button that returns the player to MenuScene.
+     * Entrance animation matches the other buttons (slide up from below, 1100 ms delay).
+     * Pointer input is registered only on the button — not on the global input manager —
+     * so it cannot be triggered by taps on other screen areas.
+     */
+    private createMenuButton(): void {
+        const cx      = GAME_WIDTH / 2;
+        const BTN_W   = 280;
+        const BTN_H   = 62;
+        const targetY = GAME_HEIGHT * 0.72 + 88 + BTN_H / 2;
+        const pixelFont = '"Press Start 2P", monospace';
+
+        this.menuBtn = this.add.container(cx, targetY + 40).setAlpha(0);
+
+        const gfx = this.add.graphics();
+        this.menuBtn.add(gfx);
+
+        // Drop shadow
+        gfx.fillStyle(0x000000, 1);
+        gfx.fillRoundedRect(-BTN_W / 2 + 4, -BTN_H / 2 + 4, BTN_W, BTN_H, 14);
+        // Outline
+        gfx.fillStyle(0x000000, 1);
+        gfx.fillRoundedRect(-BTN_W / 2 - 3, -BTN_H / 2 - 3, BTN_W + 6, BTN_H + 6, 14);
+        // Fill (dark ocean blue)
+        gfx.fillStyle(0x1a4a6a, 1);
+        gfx.fillRoundedRect(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H, 12);
+        // Top highlight
+        gfx.fillStyle(0x2a6a9a, 0.4);
+        gfx.fillRoundedRect(-BTN_W / 2, -BTN_H / 2, BTN_W, 18, 12);
+
+        this.menuBtn.add(this.add.text(0, 0, 'MAIN MENU', {
+            fontFamily: pixelFont, fontSize: '12px', color: '#ffffff',
+        }).setOrigin(0.5));
+
+        // Bounce entrance
+        this.tweens.add({
+            targets: this.menuBtn, y: targetY, alpha: 1,
+            duration: 500, delay: 1100, ease: 'Back.easeOut',
+        });
+
+        // Register hit area after animation completes
+        this.time.delayedCall(1600, () => {
+            this.menuBtn.setInteractive(
+                new Phaser.Geom.Rectangle(-BTN_W / 2, -BTN_H / 2, BTN_W, BTN_H),
+                Phaser.Geom.Rectangle.Contains,
+            );
+            this.menuBtn.on('pointerover', () => { this.menuBtn.setAlpha(0.85); });
+            this.menuBtn.on('pointerout',  () => { this.menuBtn.setAlpha(1); });
+            this.menuBtn.on('pointerdown', () => { this.onMenuPressed(); });
+        });
+    }
+
+    /**
+     * Plays a press-squish animation on the MAIN MENU button then
+     * kills all active tweens and transitions to MenuScene.
+     */
+    private onMenuPressed(): void {
+        this.tweens.add({
+            targets:  this.menuBtn,
+            scaleX:   0.94, scaleY: 0.94,
+            duration: 80,
+            yoyo:     true,
+            ease:     'Sine.easeInOut',
+            onComplete: () => {
+                this.tweens.killAll();
+                this.scene.start('MenuScene');
+            },
         });
     }
 
@@ -382,7 +473,7 @@ export class GameOverScene extends Phaser.Scene {
         const cx      = GAME_WIDTH / 2;
         const BTN_W   = 200;
         const BTN_H   = 52;
-        const targetY = GAME_HEIGHT * 0.72 + 90 + BTN_H / 2;
+        const targetY = GAME_HEIGHT * 0.72 + 164 + BTN_H / 2;
         const pixelFont = '"Press Start 2P", monospace';
 
         const cont = this.add.container(cx, targetY + 40).setAlpha(0);

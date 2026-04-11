@@ -42,6 +42,10 @@ export class MenuScene extends Phaser.Scene {
 
     /** Build all menu layers, animations, and input bindings. */
     async create(): Promise<void> {
+        // Stop any scenes that may still be running from a previous session.
+        if (this.scene.isActive('GameScene'))       this.scene.stop('GameScene');
+        if (this.scene.isActive('SkinSelectScene')) this.scene.stop('SkinSelectScene');
+
         // Reset ephemeral state so the scene is clean on restart.
         this.bubbles     = [];
         this.bubbleBaseX = [];
