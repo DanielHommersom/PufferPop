@@ -151,7 +151,7 @@ export class GameScene extends Phaser.Scene {
         this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
             if (over.length === 0 && !this.isGameOver) {
                 this.fish.inflate();
-                this.playPuff();
+                void this.playPuff();
             }
         });
         this.input.on('pointerup', () => {
@@ -425,19 +425,19 @@ export class GameScene extends Phaser.Scene {
 
     // ── Audio ──────────────────────────────────────────────────────────────────
 
-    private getAudioCtx(): AudioContext | null {
+    private async getAudioCtx(): Promise<AudioContext | null> {
         try {
             if (!this.audioCtx) this.audioCtx = new AudioContext();
-            if (this.audioCtx.state === 'suspended') void this.audioCtx.resume();
+            if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
             return this.audioCtx;
         } catch {
             return null;
         }
     }
 
-    private playPuff(): void {
+    private async playPuff(): Promise<void> {
         if (this.muted) return;
-        const ctx = this.getAudioCtx();
+        const ctx = await this.getAudioCtx();
         if (!ctx) return;
         const t = ctx.currentTime;
         const dur = 0.22;
@@ -471,9 +471,9 @@ export class GameScene extends Phaser.Scene {
         pop.stop(t + dur + 0.06);
     }
 
-    private playGameOverSound(): void {
+    private async playGameOverSound(): Promise<void> {
         if (this.muted) return;
-        const ctx = this.getAudioCtx();
+        const ctx = await this.getAudioCtx();
         if (!ctx) return;
         const t = ctx.currentTime;
 
@@ -538,7 +538,7 @@ export class GameScene extends Phaser.Scene {
         this.enemies.forEach(e => e.destroy());
         this.enemies = [];
         this.fish.deflate();
-        this.playGameOverSound();
+        void this.playGameOverSound();
 
         this.registry.set('lastScore', this.score);
         await this.saveHighScore(this.score);
